@@ -7,20 +7,16 @@
   if (window.__COOKIEWX_LOADER__) return;
   window.__COOKIEWX_LOADER__ = true;
 
-  console.log("🛡️ CookieWX Loader avviato");
+  console.log("🍪 CookieWX Loader avviato");
 
-  /* ===========================
-     STATO
-  =========================== */
-  const queue = {
-    scripts: [],
-    iframes: []
-  };
-
-  const consent = {
-    funzionali: false,
-    statistici: false,
-    marketing: false
+  // Namespace globale CookieWX
+  window.CookieWX = {
+    version: "1.0.0",
+    consent: {
+      funzionali: false,
+      statistici: false,
+      marketing: false
+    }
   };
 
   /* ===========================
