@@ -376,12 +376,31 @@
     }
   }, 400);
 
-  // 3) opzionale: postMessage
-  window.addEventListener("message", function (e) {
-    if (!e || !e.data) return;
-    if (e.data.type === "COOKIEWX_CONSENT" && e.data.consent) {
-      applyConsent(e.data.consent);
+// 3) opzionale: postMessage (bridge Wix -> loader)
+window.addEventListener("message", function (e) {
+  if (!e || !e.data) return;
+
+  // ✅ SYNC completo: regole + consenso (opzione A)
+  if (e.data.type === "COOKIEWX_SYNC") {
+    if (e.data.regole) {
+      window.CookieWX.regole = e.data.regole;
+      log("📦 CookieWX: regole sync ricevute");
     }
-  });
+
+    if (e.data.consent) {
+      applyConsent(e.data.consent);
+      log("✅ CookieWX: consenso sync ricevuto");
+    }
+
+    // rianalizza dopo sync (utile se cambiano regole/iframe/script)
+    scanNow();
+    return;
+  }
+
+  // ✅ compatibilità: vecchio solo-consenso
+  if (e.data.type === "COOKIEWX_CONSENT" && e.data.consent) {
+    applyConsent(e.data.consent);
+  }
+});
 
 })();
