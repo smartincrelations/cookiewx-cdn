@@ -35,6 +35,8 @@
 
       var allow = [
         site,
+        "cookiewx-cdn.pages.dev",
+        "pages.dev",  
         "wix.com",
         "wixstatic.com",
         "wixsite.com",
