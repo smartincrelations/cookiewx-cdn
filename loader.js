@@ -1,8 +1,10 @@
 /* =========================================================
- * CookieWX Loader v2
- * - Da caricare in <head> il prima possibile
- * - Blocca SCRIPT/IFRAME prima del consenso
- * - Sblocca dopo (in base alle preferenze salvate)
+ * CookieWX Loader v2.1 (Wix-ready)
+ * - Legge consenso da: cookiewxConsenso
+ * - Legge regole da:   cookiewxRegole
+ * - Trigger update:    cookiewxTick (polling + storage)
+ * - Blocca SCRIPT/IFRAME 3rd-party finché non c'è consenso
+ * - Usa categorie da DB quando disponibili
  * ========================================================= */
 
 (function () {
@@ -10,17 +12,27 @@
   window.__COOKIEWX_LOADER__ = true;
 
   // ---------- CONFIG ----------
-  var CONSENT_KEY = "cookiewxConsenso"; // <-- usa la tua chiave reale
   var DEBUG = true;
 
-  // domini SEMPRE consentiti (Wix + sito stesso)
+  var KEYS = {
+    CONSENSO: "cookiewxConsenso",
+    REGOLE:   "cookiewxRegole",
+    TICK:     "cookiewxTick"
+  };
+
+  // ---------- SAFE LOG ----------
+  function log() {
+    if (!DEBUG) return;
+    try { console.log.apply(console, arguments); } catch (_) {}
+  }
+
+  // ---------- ALWAYS ALLOW (Wix + same-site) ----------
   function isAlwaysAllowed(url) {
     try {
       var u = new URL(url, location.href);
       var host = u.hostname.replace(/^www\./, "");
       var site = location.hostname.replace(/^www\./, "");
 
-      // allowlist Wix + sito
       var allow = [
         site,
         "wix.com",
@@ -36,17 +48,71 @@
         return host === d || host.endsWith("." + d);
       });
     } catch (e) {
-      return true; // se non riesco a parsare, non blocco (per evitare rotture)
+      // se non riesco a parsare: non blocco per non rompere
+      return true;
     }
   }
 
-  // mappa dominio -> categoria
-  function categorizeUrl(url) {
+  function shouldBlockUrl(url) {
+    if (!url) return false;
+    if (isAlwaysAllowed(url)) return false;
+    return true; // di base blocchiamo tutto ciò che è 3rd-party (non Wix e non stesso dominio)
+  }
+
+  // ---------- STATE ----------
+  window.CookieWX = window.CookieWX || {
+    version: "2.1.0",
+    consent: { funzionali: false, statistici: false, marketing: false },
+    regole: { cookies: [], scripts: [], iframes: [] }
+  };
+
+  function safeJsonParse(raw, fallback) {
+    try { return JSON.parse(raw); } catch (_) { return fallback; }
+  }
+
+  function readConsentFromStorage() {
+    var raw = localStorage.getItem(KEYS.CONSENSO);
+    if (!raw) return null;
+
+    var obj = safeJsonParse(raw, null);
+    if (!obj) return null;
+
+    var pref = obj.preferenze || obj.preferences || obj.consent || null;
+    if (!pref) return null;
+
+    return {
+      funzionali: !!pref.funzionali,
+      statistici: !!pref.statistici,
+      marketing:  !!pref.marketing
+    };
+  }
+
+  function readRegoleFromStorage() {
+    var raw = localStorage.getItem(KEYS.REGOLE);
+    if (!raw) return { cookies: [], scripts: [], iframes: [] };
+
+    var r = safeJsonParse(raw, {});
+    return {
+      cookies: Array.isArray(r.cookies) ? r.cookies : [],
+      scripts: Array.isArray(r.scripts) ? r.scripts : [],
+      iframes: Array.isArray(r.iframes) ? r.iframes : []
+    };
+  }
+
+  function hasConsentFor(category) {
+    var c = (window.CookieWX && window.CookieWX.consent) ? window.CookieWX.consent : {};
+    if (category === "funzionali") return !!c.funzionali;
+    if (category === "statistici") return !!c.statistici;
+    if (category === "marketing")  return !!c.marketing;
+    return false;
+  }
+
+  // ---------- FALLBACK CATEGORIZATION (se DB non matcha) ----------
+  function categorizeUrlFallback(url) {
     try {
       var u = new URL(url, location.href);
       var h = u.hostname.replace(/^www\./, "");
 
-      // marketing
       if (
         h.endsWith("facebook.com") ||
         h.endsWith("facebook.net") ||
@@ -58,7 +124,6 @@
         h.endsWith("tiktokcdn.com")
       ) return "marketing";
 
-      // statistici
       if (
         h.endsWith("google-analytics.com") ||
         h.endsWith("analytics.google.com") ||
@@ -68,14 +133,13 @@
         h.endsWith("segment.com")
       ) return "statistici";
 
-      // iframe tipici (maps/youtube)
       if (
         h.endsWith("youtube.com") ||
         h.endsWith("youtube-nocookie.com") ||
         h.endsWith("ytimg.com") ||
-        h.endsWith("google.com") || // maps embed spesso sta qui
+        h.endsWith("google.com") ||
         h.endsWith("gstatic.com")
-      ) return "marketing"; // spesso li vuoi sotto marketing (oppure funzionali: scegli tu)
+      ) return "marketing";
 
       return "funzionali";
     } catch (e) {
@@ -83,61 +147,59 @@
     }
   }
 
-  // ---------- STATE ----------
-  window.CookieWX = window.CookieWX || {
-    version: "2.0.0",
-    consent: { funzionali: false, statistici: false, marketing: false }
-  };
-
-  function log() {
-    if (!DEBUG) return;
-    try { console.log.apply(console, arguments); } catch (_) {}
+  // ---------- DB RULE MATCH (scripts/iframes) ----------
+  function normalizeUrl(u) {
+    return String(u || "").trim();
   }
 
-  function readConsent() {
-    try {
-      var raw = localStorage.getItem(CONSENT_KEY);
-      if (!raw) return null;
-      var obj = JSON.parse(raw);
+  function categoryFromDbRule(list, url) {
+    url = normalizeUrl(url);
+    if (!url) return null;
+    if (!Array.isArray(list)) return null;
 
-      // Supporta sia {accettato:true, preferenze:{...}} sia {preferenze:{...}}
-      var pref = obj.preferenze || obj.preferences || obj.consent || obj;
-      if (!pref) return null;
+    // regola può essere:
+    // { src: "xxx", categoria:"marketing" } oppure { url:"xxx", categoria:"..." } oppure string
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      var needle = "";
 
-      return {
-        funzionali: !!pref.funzionali,
-        statistici: !!pref.statistici,
-        marketing: !!pref.marketing
-      };
-    } catch (e) {
-      return null;
+      if (typeof r === "string") {
+        needle = r;
+      } else if (r && typeof r === "object") {
+        needle = r.src || r.url || "";
+      }
+
+      needle = normalizeUrl(needle);
+      if (!needle) continue;
+
+      // match “contains”
+      if (url.indexOf(needle) !== -1) {
+        var cat = (r && typeof r === "object" && r.categoria) ? r.categoria : null;
+        return cat || null;
+      }
     }
+    return null;
   }
 
-  function hasConsentFor(category) {
-    var c = window.CookieWX && window.CookieWX.consent ? window.CookieWX.consent : {};
-    if (category === "funzionali") return !!c.funzionali;
-    if (category === "statistici") return !!c.statistici;
-    if (category === "marketing") return !!c.marketing;
-    return false;
+  function getCategoryForScript(url) {
+    var catDb = categoryFromDbRule(window.CookieWX.regole.scripts, url);
+    return catDb || categorizeUrlFallback(url);
   }
 
-  // queue di elementi bloccati
-  var Q = {
-    scripts: [],
-    iframes: []
-  };
+  function getCategoryForIframe(url) {
+    var catDb = categoryFromDbRule(window.CookieWX.regole.iframes, url);
+    return catDb || categorizeUrlFallback(url);
+  }
 
-  // ---------- BLOCKERS ----------
+  // ---------- QUEUE ----------
+  var Q = { scripts: [], iframes: [] };
+
   function blockScript(el, src, category) {
-    // salva e neutralizza
     el.setAttribute("data-cwx-blocked", "1");
     el.setAttribute("data-cwx-category", category);
     el.setAttribute("data-cwx-src", src);
 
-    // evita fetch
     el.removeAttribute("src");
-    // per sicurezza: type non eseguibile
     try { el.type = "text/plain"; } catch (_) {}
 
     Q.scripts.push(el);
@@ -149,17 +211,9 @@
     el.setAttribute("data-cwx-category", category);
     el.setAttribute("data-cwx-src", src);
 
-    // evita fetch
     el.removeAttribute("src");
-
     Q.iframes.push(el);
     log("🧱 CookieWX blocca IFRAME:", category, src);
-  }
-
-  function shouldBlockUrl(url) {
-    if (!url) return false;
-    if (isAlwaysAllowed(url)) return false;
-    return true;
   }
 
   function handleScriptElement(el) {
@@ -168,12 +222,10 @@
 
     var src = el.getAttribute("src");
     if (!src) return;
-
     if (!shouldBlockUrl(src)) return;
 
-    var category = categorizeUrl(src);
+    var category = getCategoryForScript(src);
 
-    // se non c'è consenso per quella categoria -> blocca
     if (!hasConsentFor(category)) {
       blockScript(el, src, category);
     }
@@ -185,16 +237,15 @@
 
     var src = el.getAttribute("src");
     if (!src) return;
-
     if (!shouldBlockUrl(src)) return;
 
-    var category = categorizeUrl(src);
+    var category = getCategoryForIframe(src);
+
     if (!hasConsentFor(category)) {
       blockIframe(el, src, category);
     }
   }
 
-  // scanner iniziale (nel caso qualcosa sia già in DOM)
   function scanNow() {
     try {
       document.querySelectorAll("script[src]").forEach(handleScriptElement);
@@ -202,29 +253,26 @@
     } catch (_) {}
   }
 
-  // MutationObserver per bloccare anche ciò che viene aggiunto dopo
   var obs = new MutationObserver(function (mutations) {
     for (var i = 0; i < mutations.length; i++) {
       var m = mutations[i];
-      if (m.type === "childList") {
-        m.addedNodes && m.addedNodes.forEach(function (n) {
-          if (!n || n.nodeType !== 1) return;
-          var tag = (n.tagName || "").toLowerCase();
+      if (m.type !== "childList") continue;
 
-          if (tag === "script") handleScriptElement(n);
-          if (tag === "iframe") handleIframeElement(n);
+      m.addedNodes && m.addedNodes.forEach(function (n) {
+        if (!n || n.nodeType !== 1) return;
+        var tag = (n.tagName || "").toLowerCase();
 
-          // se un wrapper contiene script/iframe
-          try {
-            n.querySelectorAll && n.querySelectorAll("script[src]").forEach(handleScriptElement);
-            n.querySelectorAll && n.querySelectorAll("iframe[src]").forEach(handleIframeElement);
-          } catch (_) {}
-        });
-      }
+        if (tag === "script") handleScriptElement(n);
+        if (tag === "iframe") handleIframeElement(n);
+
+        try {
+          n.querySelectorAll && n.querySelectorAll("script[src]").forEach(handleScriptElement);
+          n.querySelectorAll && n.querySelectorAll("iframe[src]").forEach(handleIframeElement);
+        } catch (_) {}
+      });
     }
   });
 
-  // ---------- RELEASE ----------
   function releaseBlocked() {
     // scripts
     var scripts = Q.scripts.slice();
@@ -236,14 +284,11 @@
       if (!src) return;
 
       if (hasConsentFor(category)) {
-        try {
-          el.type = "text/javascript";
-        } catch (_) {}
+        try { el.type = "text/javascript"; } catch (_) {}
         el.setAttribute("src", src);
         el.removeAttribute("data-cwx-blocked");
         log("✅ CookieWX rilascia SCRIPT:", category, src);
       } else {
-        // resta bloccato
         Q.scripts.push(el);
       }
     });
@@ -273,42 +318,70 @@
     window.CookieWX.consent = {
       funzionali: !!consentObj.funzionali,
       statistici: !!consentObj.statistici,
-      marketing: !!consentObj.marketing
+      marketing:  !!consentObj.marketing
     };
 
     log("⚙️ CookieWX consenso applicato:", window.CookieWX.consent);
     releaseBlocked();
   }
 
-  // API globale (comoda dal banner)
+  function applyFromStorage() {
+    // 1) regole
+    window.CookieWX.regole = readRegoleFromStorage();
+
+    // 2) consenso
+    var c = readConsentFromStorage();
+    if (c) {
+      applyConsent(c);
+    } else {
+      // nessun consenso => tutto false (blocco)
+      window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
+      log("ℹ️ CookieWX: nessun consenso, resto in blocco.");
+    }
+
+    // 3) ricanalizza DOM (utile quando regole cambiano)
+    scanNow();
+  }
+
+  // API globale (opzionale)
   window.CookieWX.applyConsent = applyConsent;
+  window.CookieWX.applyFromStorage = applyFromStorage;
 
   // ---------- BOOT ----------
-  // 1) carica consenso se esiste già
-  var c0 = readConsent();
-  if (c0) applyConsent(c0);
-  else log("ℹ️ CookieWX: nessun consenso salvato, blocco attivo.");
-
-  // 2) avvia observer + scan
-  try {
-    obs.observe(document.documentElement, { childList: true, subtree: true });
-  } catch (_) {}
+  // Observer + scan
+  try { obs.observe(document.documentElement, { childList: true, subtree: true }); } catch (_) {}
   scanNow();
 
-  // 3) segnali di aggiornamento consenso (banner)
+  // Applica stato iniziale
+  applyFromStorage();
+
+  // ---------- UPDATE TRIGGERS ----------
+  // 1) storage (tab diverse)
   window.addEventListener("storage", function (e) {
-    if (e.key === CONSENT_KEY) {
-      var c = readConsent();
-      applyConsent(c);
+    if (!e) return;
+    if (e.key === KEYS.CONSENSO || e.key === KEYS.REGOLE || e.key === KEYS.TICK) {
+      log("🔁 CookieWX: storage update:", e.key);
+      applyFromStorage();
     }
   });
 
+  // 2) polling tick (stessa tab, Wix)
+  var lastTick = localStorage.getItem(KEYS.TICK) || "";
+  setInterval(function () {
+    var t = localStorage.getItem(KEYS.TICK) || "";
+    if (t !== lastTick) {
+      lastTick = t;
+      log("🔁 CookieWX: tick changed, re-apply");
+      applyFromStorage();
+    }
+  }, 400);
+
+  // 3) opzionale: postMessage
   window.addEventListener("message", function (e) {
-    // il tuo banner iframe può fare:
-    // parent.postMessage({ type:"COOKIEWX_CONSENT", consent:{...} }, "*")
     if (!e || !e.data) return;
     if (e.data.type === "COOKIEWX_CONSENT" && e.data.consent) {
       applyConsent(e.data.consent);
     }
   });
+
 })();
