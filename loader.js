@@ -247,7 +247,11 @@
       blockIframe(el, src, category);
     }
   }
-
+try {
+  if (document.currentScript) {
+    document.currentScript.setAttribute("data-cwx-checked", "1");
+  }
+} catch (_) {}
   function scanNow() {
     try {
       document.querySelectorAll("script[src]").forEach(handleScriptElement);
