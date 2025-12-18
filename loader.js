@@ -79,22 +79,36 @@
     try { return JSON.parse(raw); } catch (_) { return fallback; }
   }
 
-  function readConsentFromStorage() {
-    var raw = readLocalCompat(KEYS.CONSENSO);
-    if (!raw) return null;
+function readConsentFromStorage() {
+  // 1) prova key diretta
+  var raw = localStorage.getItem(KEYS.CONSENSO);
 
-    var obj = safeJsonParse(raw, null);
-    if (!obj) return null;
+  // 2) fallback Wix platform_app_*
+  if (!raw) {
+    try {
+      Object.keys(localStorage).forEach(function (k) {
+        if (k.indexOf("platform_app_") !== 0) return;
 
-    var pref = obj.preferenze || obj.preferences || obj.consent || null;
-    if (!pref) return null;
-
-    return {
-      funzionali: !!pref.funzionali,
-      statistici: !!pref.statistici,
-      marketing:  !!pref.marketing
-    };
+        var box = safeJsonParse(localStorage.getItem(k) || "{}", {});
+        if (box && typeof box[KEYS.CONSENSO] === "string") {
+          raw = box[KEYS.CONSENSO];
+        }
+      });
+    } catch (_) {}
   }
+
+  if (!raw) return null;
+
+  // 3) parse reale consenso
+  var obj = safeJsonParse(raw, null);
+  if (!obj || !obj.preferenze) return null;
+
+  return {
+    funzionali: !!obj.preferenze.funzionali,
+    statistici: !!obj.preferenze.statistici,
+    marketing:  !!obj.preferenze.marketing
+  };
+}
 
   function readLocalCompat(key) {
   // 1) prova key diretta
