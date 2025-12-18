@@ -48,9 +48,6 @@
       "wixdns.net",
       "parastorage.com",
       "static.parastorage.com",
-
-      // ✅ HTML component Wix (html1)
-      "filesusr.com"
     ];
 
     return allow.some(function (d) {
@@ -235,10 +232,21 @@ function hasConsentFor(category) {
     return catDb || categorizeUrlFallback(url);
   }
 
-  function getCategoryForIframe(url) {
-    var catDb = categoryFromDbRule(window.CookieWX.regole.iframes, url);
-    return catDb || categorizeUrlFallback(url);
-  }
+function getCategoryForIframe(url) {
+  var catDb = categoryFromDbRule(window.CookieWX.regole.iframes, url);
+
+  // ⛔ filesusr.com NON è sempre ammesso
+  // se non ho una regola DB, lo considero marketing
+  try {
+    var u = new URL(url, location.href);
+    var h = u.hostname.replace(/^www\./, "");
+    if (h.endsWith("filesusr.com")) {
+      return catDb || "marketing";
+    }
+  } catch (_) {}
+
+  return catDb || categorizeUrlFallback(url);
+}
 
   // ---------- QUEUE ----------
   var Q = { scripts: [], iframes: [] };
