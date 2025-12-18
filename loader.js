@@ -429,8 +429,15 @@ try {
     };
 
     log("⚙️ CookieWX consenso applicato:", window.CookieWX.consent);
-    enforceIframeTeardown();   // ✅ questa riga
-    releaseBlocked();
+enforceIframeTeardown();
+
+setTimeout(function () {
+  enforceIframeTeardown();
+  resetCheckedFlags();
+  scanNow();
+}, 50);
+
+releaseBlocked();
   }
 
   function applyFromStorage() {
