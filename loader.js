@@ -28,32 +28,39 @@
 
   // ---------- ALWAYS ALLOW (Wix + same-site) ----------
   function isAlwaysAllowed(url) {
-    try {
-      var u = new URL(url, location.href);
-      var host = u.hostname.replace(/^www\./, "");
-      var site = location.hostname.replace(/^www\./, "");
+  try {
+    var u = new URL(url, location.href);
+    var host = u.hostname.replace(/^www\./, "");
+    var site = location.hostname.replace(/^www\./, "");
 
-      var allow = [
-        site,
-        "cookiewx-cdn.pages.dev",
-        "pages.dev",  
-        "wix.com",
-        "wixstatic.com",
-        "wixsite.com",
-        "wixmp.com",
-        "wixdns.net",
-        "parastorage.com",
-        "static.parastorage.com"
-      ];
+    var allow = [
+      site,
 
-      return allow.some(function (d) {
-        return host === d || host.endsWith("." + d);
-      });
-    } catch (e) {
-      // se non riesco a parsare: non blocco per non rompere
-      return true;
-    }
+      // CookieWX
+      "cookiewx-cdn.pages.dev",
+      "pages.dev",
+
+      // Wix core
+      "wix.com",
+      "wixstatic.com",
+      "wixsite.com",
+      "wixmp.com",
+      "wixdns.net",
+      "parastorage.com",
+      "static.parastorage.com",
+
+      // ✅ HTML component Wix (html1)
+      "filesusr.com"
+    ];
+
+    return allow.some(function (d) {
+      return host === d || host.endsWith("." + d);
+    });
+  } catch (e) {
+    // fail-safe: se non riesco a parsare, NON blocco
+    return true;
   }
+}
 
   function shouldBlockUrl(url) {
     if (!url) return false;
