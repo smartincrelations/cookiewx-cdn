@@ -101,13 +101,18 @@
     };
   }
 
-  function hasConsentFor(category) {
-    var c = (window.CookieWX && window.CookieWX.consent) ? window.CookieWX.consent : {};
-    if (category === "funzionali") return !!c.funzionali;
-    if (category === "statistici") return !!c.statistici;
-    if (category === "marketing")  return !!c.marketing;
-    return false;
-  }
+function hasConsentFor(category) {
+  category = String(category || "").toLowerCase();
+
+  // ✅ essenziali sempre ammessi
+  if (category === "essenziali" || category === "essential" || category === "necessary") return true;
+
+  var c = (window.CookieWX && window.CookieWX.consent) ? window.CookieWX.consent : {};
+  if (category === "funzionali") return !!c.funzionali;
+  if (category === "statistici") return !!c.statistici;
+  if (category === "marketing")  return !!c.marketing;
+  return false;
+}
 
   // ---------- FALLBACK CATEGORIZATION (se DB non matcha) ----------
   function categorizeUrlFallback(url) {
