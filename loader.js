@@ -80,7 +80,7 @@
   }
 
   function readConsentFromStorage() {
-    var raw = localStorage.getItem(KEYS.CONSENSO);
+    var raw = readLocalCompat(KEYS.CONSENSO);
     if (!raw) return null;
 
     var obj = safeJsonParse(raw, null);
@@ -96,8 +96,29 @@
     };
   }
 
+  function readLocalCompat(key) {
+  // 1) prova key diretta
+  var direct = localStorage.getItem(key);
+  if (direct != null) return direct;
+
+  // 2) fallback Wix: platform_app_*
+  try {
+    var keys = Object.keys(localStorage);
+    for (var i = 0; i < keys.length; i++) {
+      var k = keys[i];
+      if (k.indexOf("platform_app_") !== 0) continue;
+
+      var box = safeJsonParse(localStorage.getItem(k) || "{}", {});
+      // Wix salva le tue key come proprietà dentro questo JSON
+      if (box && typeof box[key] === "string") return box[key];
+    }
+  } catch (_) {}
+
+  return null;
+}
+  
   function readRegoleFromStorage() {
-    var raw = localStorage.getItem(KEYS.REGOLE);
+    var raw = readLocalCompat(KEYS.REGOLE);
     if (!raw) return { cookies: [], scripts: [], iframes: [] };
 
     var r = safeJsonParse(raw, {});
@@ -384,9 +405,9 @@ try {
   });
 
   // 2) polling tick (stessa tab, Wix)
-  var lastTick = localStorage.getItem(KEYS.TICK) || "";
+  var lastTick = readLocalCompat(KEYS.TICK) || "";
   setInterval(function () {
-    var t = localStorage.getItem(KEYS.TICK) || "";
+    var t = readLocalCompat(KEYS.TICK) || "";
     if (t !== lastTick) {
       lastTick = t;
       log("🔁 CookieWX: tick changed, re-apply");
