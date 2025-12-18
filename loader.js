@@ -333,7 +333,17 @@ try {
       });
     }
   });
-
+  // ---------- RESET CHECK (per riesaminare dopo cambio consenso) ----------
+  function resetCheckedFlags() {
+    try {
+      // riesamina tutto ad ogni tick (iframe anche se già visti)
+      document.querySelectorAll("script[data-cwx-checked], iframe[data-cwx-checked]").forEach(function(el){
+        // evita di rianalizzare il loader stesso
+        if (el === document.currentScript) return;
+        el.removeAttribute("data-cwx-checked");
+      });
+    } catch (_) {}
+  }
   function releaseBlocked() {
     // scripts
     var scripts = Q.scripts.slice();
@@ -372,7 +382,43 @@ try {
       }
     });
   }
+  // ---------- TEARDOWN/RESTORE IFRAME già montati ----------
+  function enforceIframeTeardown() {
+    try {
+      document.querySelectorAll("iframe").forEach(function (ifr) {
+        var src = ifr.getAttribute("src") || "";
+        var saved = ifr.getAttribute("data-cwx-src") || "";
+        if (effective === "about:blank") return;
 
+        // se non è 3rd party, non tocco
+        if (!shouldBlockUrl(effective)) return;
+
+        var cat = getCategoryForIframe(effective);
+
+        // se NON ho consenso → spengo iframe già montato
+        if (!hasConsentFor(cat)) {
+          if (!saved && src) {
+            ifr.setAttribute("data-cwx-src", src);
+          }
+          // spegni davvero (non solo removeAttribute)
+          ifr.setAttribute("src", "about:blank");
+          ifr.style.display = "none";
+          log("🧱 CookieWX teardown IFRAME:", cat, effective);
+          return;
+        }
+
+        // se HO consenso → ripristino
+        if (saved && (!src || src === "about:blank")) {
+          ifr.style.display = "";
+          ifr.setAttribute("src", saved);
+          log("✅ CookieWX restore IFRAME:", cat, saved);
+        } else {
+          // se era hidden per teardown, ri-mostro
+          ifr.style.display = "";
+        }
+      });
+    } catch (_) {}
+  }
   function applyConsent(consentObj) {
     if (!consentObj) return;
 
@@ -383,6 +429,7 @@ try {
     };
 
     log("⚙️ CookieWX consenso applicato:", window.CookieWX.consent);
+    enforceIframeTeardown();   // ✅ questa riga
     releaseBlocked();
   }
 
@@ -398,9 +445,11 @@ try {
       // nessun consenso => tutto false (blocco)
       window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
       log("ℹ️ CookieWX: nessun consenso, resto in blocco.");
+      enforceIframeTeardown(); // ✅ forza teardown anche senza consenso
     }
 
-    // 3) ricanalizza DOM (utile quando regole cambiano)
+    // 3) ricanalizza DOM (utile quando regole/consenso cambiano)
+    resetCheckedFlags();
     scanNow();
   }
 
@@ -442,26 +491,31 @@ window.addEventListener("message", function (e) {
   if (!e || !e.data) return;
 
   // ✅ SYNC completo: regole + consenso (opzione A)
-  if (e.data.type === "COOKIEWX_SYNC") {
-    if (e.data.regole) {
-      window.CookieWX.regole = e.data.regole;
-      log("📦 CookieWX: regole sync ricevute");
-    }
-
-    if (e.data.consent) {
-      applyConsent(e.data.consent);
-      log("✅ CookieWX: consenso sync ricevuto");
-    }
-
-    // rianalizza dopo sync (utile se cambiano regole/iframe/script)
-    scanNow();
-    return;
+if (e.data.type === "COOKIEWX_SYNC") {
+  if (e.data.regole) {
+    window.CookieWX.regole = e.data.regole;
+    log("📦 CookieWX: regole sync ricevute");
   }
+
+  if (e.data.consent) {
+    applyConsent(e.data.consent);   // applica consenso
+    log("✅ CookieWX: consenso sync ricevuto");
+  }
+
+  enforceIframeTeardown();          // ✅ AGGIUNGI
+  resetCheckedFlags();              // ✅ AGGIUNGI
+  scanNow();                        // rianalizza DOM
+
+  return;
+}
 
   // ✅ compatibilità: vecchio solo-consenso
-  if (e.data.type === "COOKIEWX_CONSENT" && e.data.consent) {
-    applyConsent(e.data.consent);
-  }
+if (e.data.type === "COOKIEWX_CONSENT" && e.data.consent) {
+  applyConsent(e.data.consent);
+  enforceIframeTeardown();   // ✅
+  resetCheckedFlags();       // ✅
+  scanNow();
+}
 });
 
 })();
