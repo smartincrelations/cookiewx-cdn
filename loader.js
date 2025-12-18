@@ -464,7 +464,16 @@ try {
 
   // Applica stato iniziale
   applyFromStorage();
+// ✅ Wix mounts a lot of iframes late: re-apply a few times on first load
+setTimeout(function () {
+  log("⏳ CookieWX: delayed re-apply (500ms)");
+  applyFromStorage();
+}, 500);
 
+setTimeout(function () {
+  log("⏳ CookieWX: delayed re-apply (1500ms)");
+  applyFromStorage();
+}, 1500);
   // ---------- UPDATE TRIGGERS ----------
   // 1) storage (tab diverse)
   window.addEventListener("storage", function (e) {
