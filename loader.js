@@ -20,6 +20,123 @@
     TICK:     "cookiewxTick"
   };
 
+// ---------- TICK RELOAD ----------
+function kickReload() {
+  try {
+    localStorage.setItem(KEYS.TICK, String(Date.now()));
+  } catch (_) {}
+}
+  
+  // =====================
+// UI: COOKIEWX BANNER
+// =====================
+
+  var CWX_BANNER_HTML = `
+<div id="cookiewx-banner" style="
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:100%;
+  z-index:999999;
+  background:#fff;
+  box-shadow:0 -4px 12px rgba(0,0,0,.15);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+">
+  <div style="max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;">
+    <div style="flex:1;min-width:260px;">
+      <strong>Gestione cookie e privacy policy</strong><br>
+      <span style="font-size:14px;color:#444">
+        Utilizziamo cookie essenziali per il funzionamento del sito. Per tutti gli altri puoi accettare,
+        rifiutare o personalizzare le tue preferenze.
+      </span>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <button data-cwx="accept">Accetta tutto</button>
+      <button data-cwx="reject">Rifiuta</button>
+      <button data-cwx="prefs">Gestisci preferenze</button>
+    </div>
+  </div>
+</div>
+`;
+
+  function showBanner() {
+  if (document.getElementById("cookiewx-banner")) return;
+  var wrap = document.createElement("div");
+  wrap.innerHTML = CWX_BANNER_HTML;
+  document.body.appendChild(wrap.firstElementChild);
+  bindBannerEvents();
+}
+
+function hideBanner() {
+  var el = document.getElementById("cookiewx-banner");
+  if (el) el.remove();
+}
+
+function saveConsent(preferenze, tipo) {
+  try {
+    var payload = {
+      accettato: true,
+      preferenze: preferenze,
+      tipoConsenso: tipo,
+      dataConsenso: new Date().toISOString()
+    };
+
+    // 1️⃣ Salva LOCALMENTE (UX immediata)
+    localStorage.setItem(KEYS.CONSENSO, JSON.stringify(payload));
+    localStorage.setItem(KEYS.TICK, String(Date.now()));
+
+    // 2️⃣ Invia a CookieWX backend (best effort)
+    sendConsentToBackend(payload);
+
+    log("💾 CookieWX: consenso salvato", payload);
+  } catch (e) {
+    log("❌ CookieWX: errore salvataggio consenso", e);
+  }
+}
+
+  function sendConsentToBackend(payload) {
+  try {
+    fetch("https://www.cookiewx.com/_functions/consenso", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        dominio: location.hostname,
+        consenso: payload,
+        userAgent: navigator.userAgent,
+        referrer: document.referrer || null
+      })
+    }).catch(function () {
+      // silenzioso: il loader non deve MAI rompersi
+    });
+  } catch (_) {}
+}
+  
+  function bindBannerEvents() {
+  var root = document.getElementById("cookiewx-banner");
+  if (!root) return;
+
+  root.querySelector('[data-cwx="accept"]').onclick = function () {
+    saveConsent({ essenziali:true, funzionali:true, statistici:true, marketing:true }, "totale");
+    hideBanner();
+    kickReload();
+  };
+
+  root.querySelector('[data-cwx="reject"]').onclick = function () {
+    saveConsent({ essenziali:true, funzionali:false, statistici:false, marketing:false }, "rifiutato");
+    hideBanner();
+    kickReload();
+  };
+
+  root.querySelector('[data-cwx="prefs"]').onclick = function () {
+    hideBanner();
+    showPreferences(); // lo faremo dopo
+  };
+}
+
+  
+
   // ---------- SAFE LOG ----------
   function log() {
     if (!DEBUG) return;
@@ -457,15 +574,16 @@ releaseBlocked();
   window.CookieWX.regole = nextRegole;
 
   // 🔹 2) consenso
-  var c = readConsentFromStorage();
-  if (c) {
-    applyConsent(c);
-  } else {
-    window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
-    log("ℹ️ CookieWX: nessun consenso, resto in blocco.");
-    enforceIframeTeardown();
-  }
-
+var c = readConsentFromStorage();
+if (c) {
+  applyConsent(c);
+  hideBanner();
+} else {
+  window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
+  log("ℹ️ CookieWX: nessun consenso, mostro banner.");
+  showBanner();
+  enforceIframeTeardown();
+}
   // 🔹 3) rianalizza DOM
   resetCheckedFlags();
   scanNow();
