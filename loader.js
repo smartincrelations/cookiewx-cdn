@@ -150,8 +150,14 @@ function hideBanner() {
 
 function saveConsent(preferenze, tipo) {
   try {
+    var accettato = (
+      preferenze.funzionali ||
+      preferenze.statistici ||
+      preferenze.marketing
+    );
+
     var payload = {
-      accettato: true,
+      accettato: accettato,
       preferenze: preferenze,
       tipoConsenso: tipo,
       dataConsenso: new Date().toISOString()
@@ -172,21 +178,23 @@ function saveConsent(preferenze, tipo) {
 
 function sendConsentToBackend(consensoPayload) {
   try {
-    var payload = {
-      domain: location.hostname,
-      userId: getOrCreateUserId(),
-      consenso: consensoPayload
-    };
+var payload = {
+  domain: location.hostname,
+  userId: getOrCreateUserId(),
+  consenso: consensoPayload,
+  referrer: document.referrer || null
+};
 
-    fetch("https://www.cookiewx.com/_functions/consenso", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(payload)
-    }).catch(function () {
-      // silenzioso
-    });
+fetch("https://www.cookiewx.com/_functions/consenso", {
+  method: "POST",
+  credentials: "omit",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify(payload)
+}).catch(function () {
+  // silenzioso: il loader NON deve rompersi
+});
 
     log("📡 CookieWX → backend", payload);
   } catch (_) {}
@@ -263,7 +271,7 @@ function sendConsentToBackend(consensoPayload) {
 
   // ---------- STATE ----------
   window.CookieWX = window.CookieWX || {
-    version: "2.1.0",
+    version: "2.2.0",
     consent: { funzionali: false, statistici: false, marketing: false },
     regole: { cookies: [], scripts: [], iframes: [] }
   };
