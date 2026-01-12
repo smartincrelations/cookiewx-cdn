@@ -22,6 +22,26 @@
   
   var CWX_FAVICONS = [];
 
+// ---------- USER ID ----------
+function getOrCreateUserId() {
+  try {
+    var key = "cookiewxUserId";
+    var id = localStorage.getItem(key);
+    if (id) return id;
+
+    // UUID v4 semplice e robusto
+    id = "cwx-" + ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+    );
+
+    localStorage.setItem(key, id);
+    return id;
+  } catch (_) {
+    // fallback estremo (session-only)
+    return "cwx-temp-" + Date.now();
+  }
+}
+  
 function captureFavicons() {
   try {
     document.querySelectorAll('link[rel~="icon"]').forEach(function (el) {
@@ -31,6 +51,20 @@ function captureFavicons() {
         type: el.getAttribute("type")
       });
     });
+  } catch (_) {}
+}
+
+  function injectCookieWXFavicon() {
+  try {
+    if (document.querySelector('link[data-cwx-favicon]')) return;
+
+    var link = document.createElement("link");
+    link.rel = "icon";
+    link.href = "https://static.wixstatic.com/media/cf36e3_d9fff42867074acda9fd81e2037a9d57~mv2.png";
+    link.type = "image/png";
+    link.setAttribute("data-cwx-favicon", "1");
+
+    document.head.appendChild(link);
   } catch (_) {}
 }
   
@@ -136,22 +170,25 @@ function saveConsent(preferenze, tipo) {
   }
 }
 
-  function sendConsentToBackend(payload) {
+function sendConsentToBackend(consensoPayload) {
   try {
+    var payload = {
+      domain: location.hostname,
+      userId: getOrCreateUserId(),
+      consenso: consensoPayload
+    };
+
     fetch("https://www.cookiewx.com/_functions/consenso", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        dominio: location.hostname,
-        consenso: payload,
-        userAgent: navigator.userAgent,
-        referrer: document.referrer || null
-      })
+      body: JSON.stringify(payload)
     }).catch(function () {
-      // silenzioso: il loader non deve MAI rompersi
+      // silenzioso
     });
+
+    log("📡 CookieWX → backend", payload);
   } catch (_) {}
 }
   
@@ -624,6 +661,7 @@ if (c) {
   window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
   log("ℹ️ CookieWX: nessun consenso, mostro banner.");
   showBanner();
+  injectCookieWXFavicon();   // 👈 AGGIUNGI QUESTA RIGA
   enforceIframeTeardown();
 }
   // 🔹 3) rianalizza DOM
