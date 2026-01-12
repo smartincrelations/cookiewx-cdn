@@ -185,7 +185,7 @@ var payload = {
   referrer: document.referrer || null
 };
 
-fetch("https://www.cookiewx.com/_functions/consenso", {
+fetch("https://www.cookiewx.com/_webmodules/consenso", {
   method: "POST",
   credentials: "omit",
   headers: {
