@@ -67,10 +67,10 @@ function kickReload() {
   var CWX_BANNER_HTML = `
 <div id="cookiewx-banner" style="
   position:fixed;
-  bottom:0;
-  left:0;
-  width:100%;
-  z-index:999999;
+  inset:auto 0 0 0;
+  width:100vw;
+  z-index:2147483647;
+  pointer-events:auto;
   background:#fff;
   box-shadow:0 -4px 12px rgba(0,0,0,.15);
   font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
@@ -92,14 +92,23 @@ function kickReload() {
 </div>
 `;
 
-  function showBanner() {
+function showBanner() {
   if (document.getElementById("cookiewx-banner")) return;
-  var wrap = document.createElement("div");
-  wrap.innerHTML = CWX_BANNER_HTML;
-  document.body.appendChild(wrap.firstElementChild);
-  bindBannerEvents();
-}
 
+  function mount() {
+    if (!document.body) {
+      requestAnimationFrame(mount);
+      return;
+    }
+
+    var wrap = document.createElement("div");
+    wrap.innerHTML = CWX_BANNER_HTML;
+    document.body.appendChild(wrap.firstElementChild);
+    bindBannerEvents();
+  }
+
+  mount();
+}
 function hideBanner() {
   var el = document.getElementById("cookiewx-banner");
   if (el) el.remove();
