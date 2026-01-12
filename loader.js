@@ -185,15 +185,10 @@ var payload = {
   referrer: document.referrer || null
 };
 
-fetch("https://www.cookiewx.com/_webmodules/consenso", {
+fetch("https://www.cookiewx.com/_functions/consenso", {
   method: "POST",
-  credentials: "omit",
-  headers: {
-    "Content-Type": "application/json"
-  },
+  headers: { "Content-Type": "application/json" },
   body: JSON.stringify(payload)
-}).catch(function () {
-  // silenzioso: il loader NON deve rompersi
 });
 
     log("📡 CookieWX → backend", payload);
