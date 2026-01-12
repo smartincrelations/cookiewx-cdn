@@ -19,6 +19,39 @@
     REGOLE:   "cookiewxRegole",
     TICK:     "cookiewxTick"
   };
+  
+  var CWX_FAVICONS = [];
+
+function captureFavicons() {
+  try {
+    document.querySelectorAll('link[rel~="icon"]').forEach(function (el) {
+      CWX_FAVICONS.push({
+        rel: el.getAttribute("rel"),
+        href: el.getAttribute("href"),
+        type: el.getAttribute("type")
+      });
+    });
+  } catch (_) {}
+}
+  
+  function restoreFavicons() {
+  try {
+    if (!CWX_FAVICONS.length) return;
+
+    document.querySelectorAll('link[rel~="icon"]').forEach(function (el) {
+      el.remove();
+    });
+
+    CWX_FAVICONS.forEach(function (f) {
+      var link = document.createElement("link");
+      link.rel = f.rel;
+      link.href = f.href;
+      if (f.type) link.type = f.type;
+      document.head.appendChild(link);
+    });
+  } catch (_) {}
+}
+  captureFavicons();
 
 // ---------- TICK RELOAD ----------
 function kickReload() {
@@ -585,6 +618,7 @@ if (c) {
   enforceIframeTeardown();
 }
   // 🔹 3) rianalizza DOM
+  restoreFavicons();   // 👈 QUESTA RIGA VA QUI
   resetCheckedFlags();
   scanNow();
 }
