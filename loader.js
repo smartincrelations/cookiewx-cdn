@@ -185,7 +185,7 @@ var payload = {
   referrer: document.referrer || null
 };
 
-fetch("https://www.cookiewx.com/_functions/consenso", {
+fetch("https://www.cookiewx.com/_functions/cookiewx-consent", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify(payload)
