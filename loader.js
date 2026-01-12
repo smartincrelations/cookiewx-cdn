@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v2.1 (Wix-ready)
+ * CookieWX Loader v2.2 (Wix-ready)
  * - Legge consenso da: cookiewxConsenso
  * - Legge regole da:   cookiewxRegole
  * - Trigger update:    cookiewxTick (polling + storage)
@@ -133,11 +133,12 @@ function readConsentFromStorage() {
     if (!raw) return { cookies: [], scripts: [], iframes: [] };
 
     var r = safeJsonParse(raw, {});
-    return {
-      cookies: Array.isArray(r.cookies) ? r.cookies : [],
-      scripts: Array.isArray(r.scripts) ? r.scripts : [],
-      iframes: Array.isArray(r.iframes) ? r.iframes : []
-    };
+return {
+  version: r.version || "0",
+  cookies: Array.isArray(r.cookies) ? r.cookies : [],
+  scripts: Array.isArray(r.scripts) ? r.scripts : [],
+  iframes: Array.isArray(r.iframes) ? r.iframes : []
+};
   }
 
 function hasConsentFor(category) {
@@ -388,7 +389,8 @@ try {
       document.querySelectorAll("iframe").forEach(function (ifr) {
         var src = ifr.getAttribute("src") || "";
         var saved = ifr.getAttribute("data-cwx-src") || "";
-        if (effective === "about:blank") return;
+        var effective = src || saved;
+        if (!effective || effective === "about:blank") return;
 
         // se non è 3rd party, non tocco
         if (!shouldBlockUrl(effective)) return;
@@ -441,24 +443,33 @@ releaseBlocked();
   }
 
   function applyFromStorage() {
-    // 1) regole
-    window.CookieWX.regole = readRegoleFromStorage();
 
-    // 2) consenso
-    var c = readConsentFromStorage();
-    if (c) {
-      applyConsent(c);
-    } else {
-      // nessun consenso => tutto false (blocco)
-      window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
-      log("ℹ️ CookieWX: nessun consenso, resto in blocco.");
-      enforceIframeTeardown(); // ✅ forza teardown anche senza consenso
-    }
+  // 🔹 1) regole (con controllo versione)
+  var prevVersion = (window.CookieWX.regole && window.CookieWX.regole.version) || "0";
+  var nextRegole = readRegoleFromStorage();
 
-    // 3) ricanalizza DOM (utile quando regole/consenso cambiano)
-    resetCheckedFlags();
-    scanNow();
+  if (nextRegole.version !== prevVersion) {
+    log("🔄 CookieWX: regole aggiornate, reset queue");
+    Q.scripts = [];
+    Q.iframes = [];
   }
+
+  window.CookieWX.regole = nextRegole;
+
+  // 🔹 2) consenso
+  var c = readConsentFromStorage();
+  if (c) {
+    applyConsent(c);
+  } else {
+    window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
+    log("ℹ️ CookieWX: nessun consenso, resto in blocco.");
+    enforceIframeTeardown();
+  }
+
+  // 🔹 3) rianalizza DOM
+  resetCheckedFlags();
+  scanNow();
+}
 
   // API globale (opzionale)
   window.CookieWX.applyConsent = applyConsent;
@@ -467,10 +478,11 @@ releaseBlocked();
   // ---------- BOOT ----------
   // Observer + scan
   try { obs.observe(document.documentElement, { childList: true, subtree: true }); } catch (_) {}
-  scanNow();
+  
 
   // Applica stato iniziale
   applyFromStorage();
+  scanNow();
 // ✅ Wix mounts a lot of iframes late: re-apply a few times on first load
 setTimeout(function () {
   log("⏳ CookieWX: delayed re-apply (500ms)");
