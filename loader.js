@@ -146,6 +146,7 @@ function kickReload() {
 `;
 
 function showBanner() {
+  hideBadge(); // opzionale UX
   if (document.getElementById("cookiewx-banner")) return;
 
   function mount() {
@@ -163,6 +164,7 @@ function showBanner() {
   mount();
 }
 function hideBanner() {
+  showBadge(); // opzionale UX
   var el = document.getElementById("cookiewx-banner");
   if (el) el.remove();
 }
@@ -187,9 +189,12 @@ function saveConsent(preferenze, tipo) {
 
     sendConsentToBackend(payload);
 
-    restoreFavicons(); // ✅ AGGIUNGI QUESTA RIGA
+restoreFavicons();
 
-    log("💾 CookieWX: consenso salvato", payload);
+showBadge();          // ✅
+updateBadgeState();   // ✅
+
+log("💾 CookieWX: consenso salvato", payload);
   } catch (e) {
     log("❌ CookieWX: errore salvataggio consenso", e);
   }
@@ -374,6 +379,95 @@ function bindPreferencesEvents() {
     hideBanner();
     kickReload();
   };
+}
+
+  // =========================================================
+// CAP. 7 — UI: FLOATING BADGE (CookieWX)
+// =========================================================
+
+var CWX_BADGE_ID = "cookiewx-badge";
+
+// ---------- HTML ----------
+var CWX_BADGE_HTML = `
+<div id="${CWX_BADGE_ID}" style="
+  position:fixed;
+  bottom:20px;
+  left:20px;
+  width:56px;
+  height:56px;
+  border-radius:50%;
+  background:#e53935;
+  color:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:22px;
+  font-weight:700;
+  cursor:pointer;
+  z-index:2147483647;
+  box-shadow:0 6px 18px rgba(0,0,0,.25);
+  animation:cwx-pulse 2s infinite;
+">
+  🍪
+</div>
+
+<style>
+@keyframes cwx-pulse {
+  0%   { transform:scale(1);   box-shadow:0 0 0 0 rgba(229,57,53,.6); }
+  70%  { transform:scale(1.05); box-shadow:0 0 0 12px rgba(229,57,53,0); }
+  100% { transform:scale(1);   box-shadow:0 0 0 0 rgba(229,57,53,0); }
+}
+</style>
+`;
+
+// ---------- SHOW ----------
+function showBadge() {
+  if (document.getElementById(CWX_BADGE_ID)) return;
+
+  var wrap = document.createElement("div");
+  wrap.innerHTML = CWX_BADGE_HTML;
+  document.body.appendChild(wrap.firstElementChild);
+
+  bindBadgeEvents();
+  updateBadgeState();
+}
+
+// ---------- HIDE ----------
+function hideBadge() {
+  var el = document.getElementById(CWX_BADGE_ID);
+  if (el) el.remove();
+}
+
+// ---------- EVENTS ----------
+function bindBadgeEvents() {
+  var el = document.getElementById(CWX_BADGE_ID);
+  if (!el) return;
+
+  el.onclick = function () {
+    hideBanner();
+    showPreferences();
+  };
+}
+
+// ---------- STATE UPDATE ----------
+function updateBadgeState() {
+  var el = document.getElementById(CWX_BADGE_ID);
+  if (!el) return;
+
+  var c = readConsentFromStorage();
+
+  // 🔴 Nessun consenso
+  if (!c) {
+    el.style.background = "#e53935";
+    el.style.animation = "cwx-pulse 2s infinite";
+    el.title = "Gestisci preferenze cookie";
+    return;
+  }
+
+  // 🟢 Consenso presente
+  el.style.background = "#2e7d32";
+  el.style.animation = "none";
+  el.title = "Preferenze cookie";
 }
 
   // ---------- SAFE LOG ----------
@@ -816,25 +910,27 @@ releaseBlocked();
   var c = readConsentFromStorage();
 
   if (c) {
-    applyConsent(c);
-    hideBanner();
+  applyConsent(c);
+  hideBanner();
 
-    // ✅ SOLO SE C’È CONSENSO → ripristino favicon originali
-    restoreFavicons();
+  showBadge();
+  updateBadgeState();
 
-  } else {
-    window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
-    log("ℹ️ CookieWX: nessun consenso, mostro banner.");
+  restoreFavicons();
+} else {
+  window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
+  log("ℹ️ CookieWX: nessun consenso, mostro banner.");
 
-    showBanner();
+  showBanner();
+  showBadge();
+  updateBadgeState();   // ✅ MANCAVA
 
-    // ✅ SOLO SE NON C’È CONSENSO → favicon CookieWX
-    injectCookieWXFavicon();
-    setTimeout(injectCookieWXFavicon, 300);
-    setTimeout(injectCookieWXFavicon, 1000);
+  injectCookieWXFavicon();
+  setTimeout(injectCookieWXFavicon, 300);
+  setTimeout(injectCookieWXFavicon, 1000);
 
-    enforceIframeTeardown();
-  }
+  enforceIframeTeardown();
+}
 
   // 🔹 3) rianalizza DOM
   resetCheckedFlags();
