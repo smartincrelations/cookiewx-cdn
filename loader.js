@@ -388,12 +388,15 @@ function bindPreferencesEvents() {
 var CWX_BADGE_ID = "cookiewx-badge";
 
 // ---------- HTML ----------
-var CWX_BADGE_HTML = `
-<div id="${CWX_BADGE_ID}" class="cwx-badge cwx-hidden">
-  🍪
-</div>
+var CWX_BADGE_HTML =
+  '<div id="' + CWX_BADGE_ID + '" class="cwx-badge">🍪</div>';
 
-<style>
+  (function injectBadgeStyle() {
+  if (document.getElementById("cwx-badge-style")) return;
+
+  var style = document.createElement("style");
+  style.id = "cwx-badge-style";
+  style.textContent = `
 .cwx-badge {
   position: fixed;
   bottom: 20px;
@@ -402,34 +405,31 @@ var CWX_BADGE_HTML = `
   cursor: pointer;
   z-index: 2147483647;
 
-  /* niente sfondo */
   background: none;
   box-shadow: none;
 
-  /* fade */
   opacity: 0;
   transform: translateY(10px);
   transition: opacity .35s ease, transform .35s ease;
 }
 
-/* visibile */
 .cwx-badge.cwx-show {
   opacity: 1;
   transform: translateY(0);
 }
 
-/* stato “attenzione” (no consenso) */
 .cwx-badge.cwx-pulse {
   animation: cwx-pulse 2s infinite;
 }
 
 @keyframes cwx-pulse {
-  0%   { transform: translateY(0) scale(1); }
-  50%  { transform: translateY(0) scale(1.1); }
-  100% { transform: translateY(0) scale(1); }
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.1); }
+  100% { transform: scale(1); }
 }
-</style>
 `;
+  document.head.appendChild(style);
+})();
 
 // ---------- SHOW ----------
 function showBadge() {
@@ -488,12 +488,6 @@ function updateBadgeState() {
     // consenso presente → fermo
     el.title = "Preferenze cookie";
   }
-}
-
-  // 🟢 Consenso presente
-  el.style.background = "#2e7d32";
-  el.style.animation = "none";
-  el.title = "Preferenze cookie";
 }
 
   // ---------- SAFE LOG ----------
