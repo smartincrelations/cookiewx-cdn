@@ -448,6 +448,59 @@ var CWX_PREFERENCES_HTML = `
       opacity: .5;
       pointer-events: none;
     }
+    /* ===========================
+   BUTTON INTERACTIONS
+=========================== */
+
+#cookiewx-preferences button {
+  appearance: none;
+  border: none;
+  padding: 10px 18px;
+  border-radius: 10px;
+  font-size: 14px;
+  cursor: pointer;
+  transition:
+    background-color .2s ease,
+    box-shadow .2s ease,
+    transform .12s ease,
+    opacity .2s ease;
+}
+
+/* Annulla */
+#cookiewx-preferences button[data-cwx-pref-action="cancel"] {
+  background: transparent;
+  color: #555;
+}
+
+#cookiewx-preferences button[data-cwx-pref-action="cancel"]:hover {
+  background: rgba(0,0,0,.05);
+}
+
+#cookiewx-preferences button[data-cwx-pref-action="cancel"]:active {
+  transform: scale(.96);
+}
+
+/* Salva preferenze */
+#cookiewx-preferences button[data-cwx-pref-action="save"] {
+  background: #111;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(0,0,0,.2);
+}
+
+#cookiewx-preferences button[data-cwx-pref-action="save"]:hover {
+  background: #000;
+  box-shadow: 0 8px 22px rgba(0,0,0,.28);
+}
+
+#cookiewx-preferences button[data-cwx-pref-action="save"]:active {
+  transform: scale(.96);
+}
+
+/* Focus accessibile */
+#cookiewx-preferences button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(46,204,113,.35);
+}
 
     #cookiewx-preferences button {
       transition: transform .15s ease, box-shadow .15s ease;
