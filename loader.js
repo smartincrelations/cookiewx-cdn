@@ -126,6 +126,35 @@ function restoreFavicons() {
   } catch (_) {}
 }
 
+  // =========================================================
+// CAP. 3.1 — HEAD WATCHER (Wix reload fix)
+// =========================================================
+(function watchHeadForFavicon() {
+  function ensureFavicon() {
+    var hasCwx = document.querySelector('link[data-cwx-favicon]');
+    if (!hasCwx) {
+      injectCookieWXFavicon();
+    }
+  }
+
+  // head già pronto
+  if (document.head) {
+    ensureFavicon();
+
+    var headObserver = new MutationObserver(function () {
+      ensureFavicon();
+    });
+
+    headObserver.observe(document.head, {
+      childList: true,
+      subtree: true
+    });
+  } else {
+    // Wix: head arriva dopo
+    requestAnimationFrame(watchHeadForFavicon);
+  }
+})();
+
 // CAP. 4 — UTILS ---------- TICK RELOAD ----------
 function kickReload() {
   try {
