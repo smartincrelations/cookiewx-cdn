@@ -57,35 +57,22 @@ function captureFavicons() {
 
 function injectCookieWXFavicon() {
   try {
-    // ✅ 1. cattura favicon originali UNA SOLA VOLTA
-    if (!CWX_FAVICONS.length) {
-      document.querySelectorAll(
-        'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
-      ).forEach(function (el) {
-        CWX_FAVICONS.push({
-          rel: el.getAttribute("rel"),
-          href: el.getAttribute("href"),
-          type: el.getAttribute("type"),
-          sizes: el.getAttribute("sizes")
-        });
-      });
-    }
+    if (!document.head) return; // ⛔️ FIX CRITICO
 
-    // ✅ 2. rimuove SOLO favicon non CookieWX
-    document.querySelectorAll(
-      'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
-    ).forEach(function (el) {
-      if (!el.hasAttribute("data-cwx-favicon")) {
+    // rimuove SOLO favicon CookieWX precedenti
+    document
+      .querySelectorAll('link[data-cwx-favicon]')
+      .forEach(function (el) {
         el.remove();
-      }
-    });
+      });
 
-    // ✅ 3. URL favicon CookieWX (cache-busting)
     var href =
       "https://static.wixstatic.com/media/cf36e3_d9fff42867074acda9fd81e2037a9d57~mv2.png?v=" +
       Date.now();
 
     function addIcon(rel, sizes) {
+      if (!document.head) return; // ⛔️ ULTERIORE SAFETY
+
       var link = document.createElement("link");
       link.rel = rel;
       link.href = href;
@@ -95,13 +82,11 @@ function injectCookieWXFavicon() {
       document.head.appendChild(link);
     }
 
-    // ✅ 4. set completo favicon (browser + mobile)
     addIcon("icon", "16x16");
     addIcon("icon", "32x32");
     addIcon("icon", "48x48");
     addIcon("apple-touch-icon", "180x180");
     addIcon("shortcut icon");
-
   } catch (e) {
     console.warn("CookieWX favicon error", e);
   }
