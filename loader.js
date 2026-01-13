@@ -477,6 +477,54 @@ var CWX_PREFERENCES_HTML = `
     #cookiewx-preferences button:active {
       transform: scale(.96);
     }
+    /* ===============================
+   TESTI – dimensioni leggibili
+   =============================== */
+
+#cookiewx-preferences h2 {
+  font-size: 22px;
+  line-height: 1.3;
+}
+
+#cookiewx-preferences p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+#cookiewx-preferences strong {
+  font-size: 15px;
+}
+
+#cookiewx-preferences small {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* ===============================
+   BOTTONI – visibili e coerenti
+   =============================== */
+
+#cookiewx-preferences button {
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+/* Annulla */
+#cookiewx-preferences button[data-cwx-pref-action="cancel"] {
+  background: transparent;
+  color: #555;
+}
+
+/* Salva preferenze */
+#cookiewx-preferences button[data-cwx-pref-action="save"] {
+  background: #000;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(0,0,0,.2);
+}
   `;
 
   document.head.appendChild(style);
