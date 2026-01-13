@@ -310,46 +310,74 @@ var CWX_PREFERENCES_HTML = `
       Gestisci preferenze cookie
     </h2>
 
-    <p style="font-size:14px;color:#444;margin-bottom:20px;">
-      Puoi scegliere quali categorie di cookie consentire.  
+    <p style="font-size:14px;color:#444;margin-bottom:22px;">
+      Puoi scegliere quali categorie di cookie consentire.
       I cookie essenziali sono sempre attivi perché necessari al corretto funzionamento del sito.
     </p>
 
-    <div style="margin-bottom:18px">
-      <strong>Essenziali</strong><br>
-      <small style="color:#555;">
-        Necessari per il funzionamento del sito, come accesso alle aree riservate,
-        sicurezza e gestione delle operazioni di base. Non raccolgono dati personali
-        e non possono essere disattivati.
-      </small><br>
-      <input type="checkbox" checked disabled>
+    <!-- ESSENZIALI -->
+    <div class="cwx-row">
+      <div>
+        <strong>Essenziali</strong><br>
+        <small style="color:#555;">
+          Necessari per il funzionamento del sito, come accesso alle aree riservate,
+          sicurezza e gestione delle operazioni di base. Non raccolgono dati personali
+          e non possono essere disattivati.
+        </small>
+      </div>
+
+      <label class="cwx-switch cwx-disabled">
+        <input type="checkbox" checked disabled>
+        <span class="cwx-slider"></span>
+      </label>
     </div>
 
-    <div style="margin-bottom:18px">
-      <strong>Funzionali</strong><br>
-      <small style="color:#555;">
-        Consentono al sito di ricordare le tue preferenze, come lingua, area geografica
-        o impostazioni personalizzate, migliorando l’esperienza di navigazione.
-      </small><br>
-      <input type="checkbox" data-cwx-pref="funzionali">
+    <!-- FUNZIONALI -->
+    <div class="cwx-row">
+      <div>
+        <strong>Funzionali</strong><br>
+        <small style="color:#555;">
+          Consentono al sito di ricordare le tue preferenze, come lingua, area geografica
+          o impostazioni personalizzate, migliorando l’esperienza di navigazione.
+        </small>
+      </div>
+
+      <label class="cwx-switch">
+        <input type="checkbox" data-cwx-pref="funzionali">
+        <span class="cwx-slider"></span>
+      </label>
     </div>
 
-    <div style="margin-bottom:18px">
-      <strong>Statistici</strong><br>
-      <small style="color:#555;">
-        Raccolgono informazioni in forma aggregata e anonima sull’utilizzo del sito,
-        aiutandoci a migliorarne contenuti, prestazioni e funzionalità.
-      </small><br>
-      <input type="checkbox" data-cwx-pref="statistici">
+    <!-- STATISTICI -->
+    <div class="cwx-row">
+      <div>
+        <strong>Statistici</strong><br>
+        <small style="color:#555;">
+          Raccolgono informazioni in forma aggregata e anonima sull’utilizzo del sito,
+          aiutandoci a migliorarne contenuti, prestazioni e funzionalità.
+        </small>
+      </div>
+
+      <label class="cwx-switch">
+        <input type="checkbox" data-cwx-pref="statistici">
+        <span class="cwx-slider"></span>
+      </label>
     </div>
 
-    <div style="margin-bottom:26px">
-      <strong>Marketing</strong><br>
-      <small style="color:#555;">
-        Utilizzati per mostrarti contenuti e annunci personalizzati in base ai tuoi
-        interessi. Possono essere impiegati anche da servizi di terze parti.
-      </small><br>
-      <input type="checkbox" data-cwx-pref="marketing">
+    <!-- MARKETING -->
+    <div class="cwx-row" style="margin-bottom:26px;">
+      <div>
+        <strong>Marketing</strong><br>
+        <small style="color:#555;">
+          Utilizzati per mostrarti contenuti e annunci personalizzati in base ai tuoi
+          interessi. Possono essere impiegati anche da servizi di terze parti.
+        </small>
+      </div>
+
+      <label class="cwx-switch">
+        <input type="checkbox" data-cwx-pref="marketing">
+        <span class="cwx-slider"></span>
+      </label>
     </div>
 
     <div style="display:flex;gap:12px;justify-content:flex-end">
@@ -359,7 +387,71 @@ var CWX_PREFERENCES_HTML = `
   </div>
 </div>
 `;
+(function injectPreferencesStyle() {
+  if (document.getElementById("cwx-preferences-style")) return;
 
+  var style = document.createElement("style");
+  style.id = "cwx-preferences-style";
+  style.textContent = `
+.cwx-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.cwx-switch {
+  position: relative;
+  display: inline-block;
+  width: 44px;
+  height: 24px;
+  flex-shrink: 0;
+}
+
+.cwx-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.cwx-slider {
+  position: absolute;
+  inset: 0;
+  cursor: pointer;
+  background-color: #d0d0d0;
+  transition: .25s;
+  border-radius: 24px;
+}
+
+.cwx-slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: #ffffff;
+  transition: .25s;
+  border-radius: 50%;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+
+.cwx-switch input:checked + .cwx-slider {
+  background-color: #2ecc71;
+}
+
+.cwx-switch input:checked + .cwx-slider:before {
+  transform: translateX(20px);
+}
+
+.cwx-disabled {
+  opacity: .6;
+  pointer-events: none;
+}
+`;
+  document.head.appendChild(style);
+})();
 // ---------- SHOW ----------
 function showPreferences() {
   if (document.getElementById("cookiewx-preferences")) return;
