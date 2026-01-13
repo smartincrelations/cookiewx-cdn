@@ -389,53 +389,75 @@ var CWX_BADGE_ID = "cookiewx-badge";
 
 // ---------- HTML ----------
 var CWX_BADGE_HTML = `
-<div id="${CWX_BADGE_ID}" style="
-  position:fixed;
-  bottom:20px;
-  left:20px;
-  width:56px;
-  height:56px;
-  border-radius:50%;
-  background:#e53935;
-  color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:22px;
-  font-weight:700;
-  cursor:pointer;
-  z-index:2147483647;
-  box-shadow:0 6px 18px rgba(0,0,0,.25);
-  animation:cwx-pulse 2s infinite;
-">
+<div id="${CWX_BADGE_ID}" class="cwx-badge cwx-hidden">
   🍪
 </div>
 
 <style>
+.cwx-badge {
+  position: fixed;
+  bottom: 20px;
+  left: 20px;
+  font-size: 32px;
+  cursor: pointer;
+  z-index: 2147483647;
+
+  /* niente sfondo */
+  background: none;
+  box-shadow: none;
+
+  /* fade */
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity .35s ease, transform .35s ease;
+}
+
+/* visibile */
+.cwx-badge.cwx-show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* stato “attenzione” (no consenso) */
+.cwx-badge.cwx-pulse {
+  animation: cwx-pulse 2s infinite;
+}
+
 @keyframes cwx-pulse {
-  0%   { transform:scale(1);   box-shadow:0 0 0 0 rgba(229,57,53,.6); }
-  70%  { transform:scale(1.05); box-shadow:0 0 0 12px rgba(229,57,53,0); }
-  100% { transform:scale(1);   box-shadow:0 0 0 0 rgba(229,57,53,0); }
+  0%   { transform: translateY(0) scale(1); }
+  50%  { transform: translateY(0) scale(1.1); }
+  100% { transform: translateY(0) scale(1); }
 }
 </style>
 `;
 
 // ---------- SHOW ----------
 function showBadge() {
-  if (document.getElementById(CWX_BADGE_ID)) return;
+  var el = document.getElementById(CWX_BADGE_ID);
+  if (!el) {
+    var wrap = document.createElement("div");
+    wrap.innerHTML = CWX_BADGE_HTML;
+    document.body.appendChild(wrap.firstElementChild);
+    bindBadgeEvents();
+    el = document.getElementById(CWX_BADGE_ID);
+  }
 
-  var wrap = document.createElement("div");
-  wrap.innerHTML = CWX_BADGE_HTML;
-  document.body.appendChild(wrap.firstElementChild);
-
-  bindBadgeEvents();
-  updateBadgeState();
+  requestAnimationFrame(function () {
+    el.classList.add("cwx-show");
+    updateBadgeState();
+  });
 }
 
 // ---------- HIDE ----------
 function hideBadge() {
   var el = document.getElementById(CWX_BADGE_ID);
-  if (el) el.remove();
+  if (!el) return;
+
+  el.classList.remove("cwx-show");
+
+  setTimeout(function () {
+    el.remove();
+  }, 350);
 }
 
 // ---------- EVENTS ----------
@@ -456,13 +478,17 @@ function updateBadgeState() {
 
   var c = readConsentFromStorage();
 
-  // 🔴 Nessun consenso
+  el.classList.remove("cwx-pulse");
+
   if (!c) {
-    el.style.background = "#e53935";
-    el.style.animation = "cwx-pulse 2s infinite";
+    // nessun consenso → anima
     el.title = "Gestisci preferenze cookie";
-    return;
+    el.classList.add("cwx-pulse");
+  } else {
+    // consenso presente → fermo
+    el.title = "Preferenze cookie";
   }
+}
 
   // 🟢 Consenso presente
   el.style.background = "#2e7d32";
