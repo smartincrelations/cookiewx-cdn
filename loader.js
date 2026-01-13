@@ -57,31 +57,43 @@ function captureFavicons() {
 
 function injectCookieWXFavicon() {
   try {
-    // rimuovi TUTTE le favicon esistenti
-    document.querySelectorAll('link[rel*="icon"]').forEach(function (el) {
+    // rimuove TUTTE le favicon esistenti (Wix incluse)
+    document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').forEach(function (el) {
       el.remove();
     });
 
-    var link = document.createElement("link");
-    link.rel = "icon";
-    link.type = "image/png";
+    var href = "https://static.wixstatic.com/media/cf36e3_d9fff42867074acda9fd81e2037a9d57~mv2.png?v=" + Date.now();
 
-    // cache busting
-    link.href = "https://static.wixstatic.com/media/cf36e3_d9fff42867074acda9fd81e2037a9d57~mv2.png?v=" + Date.now();
+    function addIcon(rel, sizes) {
+      var link = document.createElement("link");
+      link.rel = rel;
+      link.href = href;
+      if (sizes) link.sizes = sizes;
+      link.type = "image/png";
+      link.setAttribute("data-cwx-favicon", "1");
+      document.head.appendChild(link);
+    }
 
-    link.setAttribute("data-cwx-favicon", "1");
-    document.head.appendChild(link);
+    // 🔥 DICHIARI TU LE DIMENSIONI (chiave del problema)
+    addIcon("icon", "16x16");
+    addIcon("icon", "32x32");
+    addIcon("icon", "48x48");
+    addIcon("apple-touch-icon", "180x180");
+    addIcon("shortcut icon");
 
-  } catch (_) {}
+  } catch (e) {
+    console.warn("CookieWX favicon error", e);
+  }
 }
   
-  function restoreFavicons() {
+function restoreFavicons() {
   try {
-    if (!CWX_FAVICONS.length) return;
-
-    document.querySelectorAll('link[rel~="icon"]').forEach(function (el) {
+    // rimuove SOLO favicon CookieWX
+    document.querySelectorAll('link[data-cwx-favicon]').forEach(function (el) {
       el.remove();
     });
+
+    if (!CWX_FAVICONS.length) return;
 
     CWX_FAVICONS.forEach(function (f) {
       var link = document.createElement("link");
