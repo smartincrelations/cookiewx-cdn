@@ -291,7 +291,7 @@ var CWX_PREFERENCES_HTML = `
 <div id="cookiewx-preferences" style="
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,.45);
+  background:rgba(0,0,0,.55);
   z-index:2147483647;
   display:flex;
   align-items:center;
@@ -299,36 +299,56 @@ var CWX_PREFERENCES_HTML = `
   font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
 ">
   <div style="
-    background:#e9f6e9;
-    max-width:520px;
-    width:90%;
-    padding:24px;
+    background:#ffffff;
+    max-width:560px;
+    width:92%;
+    padding:26px;
     border-radius:14px;
     box-shadow:0 8px 30px rgba(0,0,0,.25);
   ">
-    <h3 style="margin-top:0">Gestisci preferenze cookie</h3>
+    <h2 style="margin-top:0;font-size:22px;font-weight:600;">
+      Gestisci preferenze cookie
+    </h2>
 
-    <div style="margin-bottom:16px">
+    <p style="font-size:14px;color:#444;margin-bottom:20px;">
+      Puoi scegliere quali categorie di cookie consentire.  
+      I cookie essenziali sono sempre attivi perché necessari al corretto funzionamento del sito.
+    </p>
+
+    <div style="margin-bottom:18px">
       <strong>Essenziali</strong><br>
-      <small>Necessari al funzionamento del sito</small><br>
+      <small style="color:#555;">
+        Necessari per il funzionamento del sito, come accesso alle aree riservate,
+        sicurezza e gestione delle operazioni di base. Non raccolgono dati personali
+        e non possono essere disattivati.
+      </small><br>
       <input type="checkbox" checked disabled>
     </div>
 
-    <div style="margin-bottom:16px">
+    <div style="margin-bottom:18px">
       <strong>Funzionali</strong><br>
-      <small>Migliorano l’esperienza utente</small><br>
+      <small style="color:#555;">
+        Consentono al sito di ricordare le tue preferenze, come lingua, area geografica
+        o impostazioni personalizzate, migliorando l’esperienza di navigazione.
+      </small><br>
       <input type="checkbox" data-cwx-pref="funzionali">
     </div>
 
-    <div style="margin-bottom:16px">
+    <div style="margin-bottom:18px">
       <strong>Statistici</strong><br>
-      <small>Ci aiutano a capire come viene usato il sito</small><br>
+      <small style="color:#555;">
+        Raccolgono informazioni in forma aggregata e anonima sull’utilizzo del sito,
+        aiutandoci a migliorarne contenuti, prestazioni e funzionalità.
+      </small><br>
       <input type="checkbox" data-cwx-pref="statistici">
     </div>
 
-    <div style="margin-bottom:24px">
+    <div style="margin-bottom:26px">
       <strong>Marketing</strong><br>
-      <small>Mostrano contenuti e annunci personalizzati</small><br>
+      <small style="color:#555;">
+        Utilizzati per mostrarti contenuti e annunci personalizzati in base ai tuoi
+        interessi. Possono essere impiegati anche da servizi di terze parti.
+      </small><br>
       <input type="checkbox" data-cwx-pref="marketing">
     </div>
 
