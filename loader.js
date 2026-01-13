@@ -393,13 +393,16 @@ var CWX_PREFERENCES_HTML = `
   var style = document.createElement("style");
   style.id = "cwx-preferences-style";
   style.textContent = `
-    /* CSS TOGGLE + INTERAZIONI */
+    /* ===============================
+       CookieWX – Toggle & Interazioni
+       =============================== */
+
     .cwx-row {
       display: flex;
       justify-content: space-between;
-      align-items: flex-start;
+      align-items: center;
       gap: 16px;
-      margin-bottom: 18px;
+      margin-bottom: 20px;
     }
 
     .cwx-switch {
@@ -407,6 +410,7 @@ var CWX_PREFERENCES_HTML = `
       display: inline-block;
       width: 44px;
       height: 24px;
+      flex-shrink: 0; /* 🔑 FIX DEFINITIVO */
     }
 
     .cwx-switch input {
@@ -418,9 +422,9 @@ var CWX_PREFERENCES_HTML = `
     .cwx-slider {
       position: absolute;
       inset: 0;
-      background-color: #ccc;
+      background-color: #d0d0d0;
       border-radius: 24px;
-      transition: background-color .25s ease;
+      transition: background-color .25s ease, box-shadow .25s ease;
       cursor: pointer;
     }
 
@@ -431,9 +435,10 @@ var CWX_PREFERENCES_HTML = `
       width: 18px;
       left: 3px;
       top: 3px;
-      background-color: #fff;
+      background-color: #ffffff;
       border-radius: 50%;
-      transition: transform .25s ease, width .15s ease;
+      transition: transform .25s ease;
+      box-shadow: 0 1px 3px rgba(0,0,0,.3);
     }
 
     .cwx-switch input:checked + .cwx-slider {
@@ -444,85 +449,27 @@ var CWX_PREFERENCES_HTML = `
       transform: translateX(20px);
     }
 
+    /* Hover state */
+    .cwx-switch:hover .cwx-slider {
+      box-shadow: 0 0 0 6px rgba(46,204,113,.15);
+    }
+
+    /* Stato ESSENZIALI (disabilitato) */
     .cwx-disabled {
-      opacity: .5;
+      opacity: .55;
       pointer-events: none;
     }
-    /* ===========================
-   ESSENZIALI (DISABLED STATE)
-=========================== */
 
-.cwx-disabled .cwx-slider {
-  background-color: #e0e0e0 !important;
-  cursor: default;
-}
+    .cwx-disabled .cwx-slider {
+      background-color: #e5e5e5;
+    }
 
-.cwx-disabled .cwx-slider:before {
-  background-color: #ffffff;
-  box-shadow: none;
-}
+    .cwx-disabled .cwx-slider:before {
+      background-color: #f8f8f8;
+      box-shadow: none;
+    }
 
-.cwx-disabled input:checked + .cwx-slider {
-  background-color: #e0e0e0 !important;
-}
-
-.cwx-disabled .cwx-slider:hover {
-  box-shadow: none;
-}
-    /* ===========================
-   BUTTON INTERACTIONS
-=========================== */
-
-#cookiewx-preferences button {
-  appearance: none;
-  border: none;
-  padding: 10px 18px;
-  border-radius: 10px;
-  font-size: 14px;
-  cursor: pointer;
-  transition:
-    background-color .2s ease,
-    box-shadow .2s ease,
-    transform .12s ease,
-    opacity .2s ease;
-}
-
-/* Annulla */
-#cookiewx-preferences button[data-cwx-pref-action="cancel"] {
-  background: transparent;
-  color: #555;
-}
-
-#cookiewx-preferences button[data-cwx-pref-action="cancel"]:hover {
-  background: rgba(0,0,0,.05);
-}
-
-#cookiewx-preferences button[data-cwx-pref-action="cancel"]:active {
-  transform: scale(.96);
-}
-
-/* Salva preferenze */
-#cookiewx-preferences button[data-cwx-pref-action="save"] {
-  background: #111;
-  color: #fff;
-  box-shadow: 0 6px 18px rgba(0,0,0,.2);
-}
-
-#cookiewx-preferences button[data-cwx-pref-action="save"]:hover {
-  background: #000;
-  box-shadow: 0 8px 22px rgba(0,0,0,.28);
-}
-
-#cookiewx-preferences button[data-cwx-pref-action="save"]:active {
-  transform: scale(.96);
-}
-
-/* Focus accessibile */
-#cookiewx-preferences button:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(46,204,113,.35);
-}
-
+    /* Bottoni */
     #cookiewx-preferences button {
       transition: transform .15s ease, box-shadow .15s ease;
     }
@@ -530,37 +477,8 @@ var CWX_PREFERENCES_HTML = `
     #cookiewx-preferences button:active {
       transform: scale(.96);
     }
-
-    .cwx-switch:hover .cwx-slider {
-      box-shadow: 0 0 0 6px rgba(46,204,113,.15);
-    }
-    /* ===========================
-   TYPOGRAPHY IMPROVEMENTS
-=========================== */
-
-#cookiewx-preferences h2 {
-  font-size: 24px;
-  line-height: 1.3;
-}
-
-#cookiewx-preferences p {
-  font-size: 15px;
-  line-height: 1.6;
-}
-
-#cookiewx-preferences strong {
-  font-size: 15px;
-  font-weight: 600;
-}
-
-#cookiewx-preferences small {
-  display: block;
-  font-size: 13px;
-  line-height: 1.5;
-  margin-top: 4px;
-  color: #666;
-}
   `;
+
   document.head.appendChild(style);
 })();
 
