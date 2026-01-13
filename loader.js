@@ -57,12 +57,33 @@ function captureFavicons() {
 
 function injectCookieWXFavicon() {
   try {
-    // rimuove TUTTE le favicon esistenti (Wix incluse)
-    document.querySelectorAll('link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]').forEach(function (el) {
-      el.remove();
+    // ✅ 1. cattura favicon originali UNA SOLA VOLTA
+    if (!CWX_FAVICONS.length) {
+      document.querySelectorAll(
+        'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
+      ).forEach(function (el) {
+        CWX_FAVICONS.push({
+          rel: el.getAttribute("rel"),
+          href: el.getAttribute("href"),
+          type: el.getAttribute("type"),
+          sizes: el.getAttribute("sizes")
+        });
+      });
+    }
+
+    // ✅ 2. rimuove SOLO favicon non CookieWX
+    document.querySelectorAll(
+      'link[rel="icon"], link[rel="shortcut icon"], link[rel="apple-touch-icon"]'
+    ).forEach(function (el) {
+      if (!el.hasAttribute("data-cwx-favicon")) {
+        el.remove();
+      }
     });
 
-    var href = "https://static.wixstatic.com/media/cf36e3_d9fff42867074acda9fd81e2037a9d57~mv2.png?v=" + Date.now();
+    // ✅ 3. URL favicon CookieWX (cache-busting)
+    var href =
+      "https://static.wixstatic.com/media/cf36e3_d9fff42867074acda9fd81e2037a9d57~mv2.png?v=" +
+      Date.now();
 
     function addIcon(rel, sizes) {
       var link = document.createElement("link");
@@ -74,7 +95,7 @@ function injectCookieWXFavicon() {
       document.head.appendChild(link);
     }
 
-    // 🔥 DICHIARI TU LE DIMENSIONI (chiave del problema)
+    // ✅ 4. set completo favicon (browser + mobile)
     addIcon("icon", "16x16");
     addIcon("icon", "32x32");
     addIcon("icon", "48x48");
@@ -104,7 +125,6 @@ function restoreFavicons() {
     });
   } catch (_) {}
 }
-  captureFavicons();
 
 // CAP. 4 — UTILS ---------- TICK RELOAD ----------
 function kickReload() {
@@ -929,14 +949,14 @@ releaseBlocked();
   // 🔹 2) consenso
   var c = readConsentFromStorage();
 
-  if (c) {
+if (c) {
   applyConsent(c);
   hideBanner();
 
   showBadge();
   updateBadgeState();
 
-  restoreFavicons();
+  // ✅ NON toccare favicon se c’è consenso
 } else {
   window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
   log("ℹ️ CookieWX: nessun consenso, mostro banner.");
