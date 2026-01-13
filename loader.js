@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v2.2 (Wix-ready)
+ * CookieWX Loader v2.2.1 (Wix-ready)
  * - Legge consenso da: cookiewxConsenso
  * - Legge regole da:   cookiewxRegole
  * - Trigger update:    cookiewxTick (polling + storage)
@@ -164,21 +164,115 @@ function kickReload() {
 ">
   <div style="max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;">
     <div style="flex:1;min-width:260px;">
-      <strong>Gestione cookie e privacy policy</strong><br>
+      <div style="
+  font-size:18px;
+  font-weight:600;
+  margin-bottom:6px;
+  color:#000;
+">
+  Gestione cookie e privacy policy
+</div>
       <span style="font-size:14px;color:#444">
-        Utilizziamo cookie essenziali per il funzionamento del sito. Per tutti gli altri puoi accettare,
-        rifiutare o personalizzare le tue preferenze.
-      </span>
+  Utilizziamo cookie essenziali per il funzionamento del sito.
+  Per saperne di più consulta la
+  <a href="#" data-cwx-policy style="color:#000;text-decoration:underline;">
+    Cookie e privacy policy
+  </a>.
+</span>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button data-cwx="accept">Accetta tutto</button>
       <button data-cwx="reject">Rifiuta</button>
       <button data-cwx="prefs">Gestisci preferenze</button>
     </div>
+    <div style="
+  margin-top:12px;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-size:12px;
+  color:#666;
+">
+  <span>Powered by</span>
+  <a href="https://www.cookiewx.com" target="_blank" rel="noopener"
+     style="display:flex;align-items:center;gap:6px;text-decoration:none;color:#000;">
+    <img
+      src="https://static.wixstatic.com/media/cf36e3_d9fff42867074acda9fd81e2037a9d57~mv2.png"
+      alt="CookieWX"
+      style="width:18px;height:18px;border-radius:50%;"
+    >
+    <strong>CookieWX</strong>
+  </a>
+</div>
   </div>
 </div>
 `;
+(function injectBannerStyle() {
+  if (document.getElementById("cwx-banner-style")) return;
 
+  var style = document.createElement("style");
+  style.id = "cwx-banner-style";
+  style.textContent = `
+    #cookiewx-banner{
+      opacity:0;
+      transform: translateY(100%);
+      transition: opacity .35s ease, transform .35s ease;
+    }
+    #cookiewx-banner.cwx-banner-show{
+      opacity:1;
+      transform: translateY(0);
+    }
+
+    /* BOTTONI */
+    #cookiewx-banner button{
+      appearance:none;
+      border:0;
+      border-radius:10px;
+      padding:10px 14px;
+      font-size:14px;
+      cursor:pointer;
+      font-family:inherit;
+      transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+    }
+    #cookiewx-banner button:active{
+      transform: scale(.97);
+    }
+
+    /* Accetta */
+    #cookiewx-banner button[data-cwx="accept"]{
+      background:#000;
+      color:#fff;
+      box-shadow: 0 6px 16px rgba(0,0,0,.18);
+    }
+
+    /* Rifiuta */
+    #cookiewx-banner button[data-cwx="reject"]{
+      background:#f1f1f1;
+      color:#111;
+    }
+
+    /* Preferenze */
+    #cookiewx-banner button[data-cwx="prefs"]{
+      background: transparent;
+      color:#111;
+      text-decoration: underline;
+      padding-left: 6px;
+      padding-right: 6px;
+    }
+
+    /* Mobile */
+    @media (max-width: 768px){
+      #cookiewx-banner > div > div{
+        width:100%;
+      }
+      #cookiewx-banner button{
+        width:100%;
+        text-align:center;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+})();
 function showBanner() {
   hideBadge(); // opzionale UX
   if (document.getElementById("cookiewx-banner")) return;
@@ -191,16 +285,31 @@ function showBanner() {
 
     var wrap = document.createElement("div");
     wrap.innerHTML = CWX_BANNER_HTML;
-    document.body.appendChild(wrap.firstElementChild);
+
+    var banner = wrap.firstElementChild;
+    document.body.appendChild(banner);
+
+    // anima in ingresso
+    requestAnimationFrame(function () {
+      banner.classList.add("cwx-banner-show");
+    });
+
     bindBannerEvents();
+    bindPolicyLink();
   }
 
   mount();
 }
-function hideBanner() {
+  function hideBanner() {
   showBadge(); // opzionale UX
   var el = document.getElementById("cookiewx-banner");
-  if (el) el.remove();
+  if (!el) return;
+
+  el.classList.remove("cwx-banner-show");
+
+  setTimeout(function () {
+    if (el && el.parentNode) el.remove();
+  }, 350);
 }
 
 function saveConsent(preferenze, tipo) {
@@ -275,6 +384,19 @@ fetch("https://www.cookiewx.com/_functions/cookiewxConsent", {
   };
 }
 
+  function bindPolicyLink() {
+  var link = document.querySelector('[data-cwx-policy]');
+  if (!link) return;
+
+  var url = getPolicyUrl();
+  if (url) {
+    link.href = url;
+    link.target = "_blank";
+    link.rel = "noopener";
+  } else {
+    link.style.display = "none"; // se non configurata
+  }
+}
 // =========================================================
 // CAP. 6 — UI: PREFERENZE COOKIE (CUSTOM)
 // =========================================================
@@ -854,6 +976,48 @@ function readConsentFromStorage() {
 
   return null;
 }
+
+  // ---------- COOKIE WRITE GUARD ----------
+(function guardDocumentCookie() {
+  try {
+    var originalCookie = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
+
+    if (!originalCookie || !originalCookie.set) return;
+
+    Object.defineProperty(document, "cookie", {
+      configurable: true,
+      enumerable: true,
+      get: function () {
+        return originalCookie.get.call(document);
+      },
+      set: function (value) {
+        // prova a capire categoria dal nome cookie
+        var name = String(value).split("=")[0].trim().toLowerCase();
+
+        // cookie essenziali sempre ammessi
+        if (
+          name.indexOf("session") !== -1 ||
+          name.indexOf("csrf") !== -1 ||
+          name.indexOf("wix") !== -1
+        ) {
+          originalCookie.set.call(document, value);
+          return;
+        }
+
+        // se non ho consenso marketing/statistici → blocco
+        var c = window.CookieWX && window.CookieWX.consent;
+        if (!c || (!c.statistici && !c.marketing)) {
+          log("🧱 CookieWX blocca COOKIE write:", value);
+          return;
+        }
+
+        originalCookie.set.call(document, value);
+      }
+    });
+  } catch (e) {
+    log("⚠️ CookieWX cookie guard error", e);
+  }
+})();
   
   function readRegoleFromStorage() {
     var raw = readLocalCompat(KEYS.REGOLE);
@@ -867,6 +1031,17 @@ return {
   iframes: Array.isArray(r.iframes) ? r.iframes : []
 };
   }
+  function getPolicyUrl() {
+  try {
+    return (
+      window.CookieWX &&
+      window.CookieWX.regole &&
+      window.CookieWX.regole.policyUrl
+    ) || null;
+  } catch (_) {
+    return null;
+  }
+}
 
 function hasConsentFor(category) {
   category = String(category || "").toLowerCase();
