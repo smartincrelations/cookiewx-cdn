@@ -164,12 +164,12 @@ function saveConsent(preferenze, tipo) {
       dataConsenso: new Date().toISOString()
     };
 
-    // 1️⃣ Salva LOCALMENTE (UX immediata)
     localStorage.setItem(KEYS.CONSENSO, JSON.stringify(payload));
     localStorage.setItem(KEYS.TICK, String(Date.now()));
 
-    // 2️⃣ Invia a CookieWX backend (best effort)
     sendConsentToBackend(payload);
+
+    restoreFavicons(); // ✅ AGGIUNGI QUESTA RIGA
 
     log("💾 CookieWX: consenso salvato", payload);
   } catch (e) {
@@ -288,6 +288,7 @@ var CWX_PREFERENCES_HTML = `
 
 // ---------- SHOW ----------
 function showPreferences() {
+   injectCookieWXFavicon();
   if (document.getElementById("cookiewx-preferences")) return;
 
   var wrap = document.createElement("div");
@@ -315,6 +316,7 @@ function showPreferences() {
 
 // ---------- HIDE ----------
 function hidePreferences() {
+   restoreFavicons();
   var el = document.getElementById("cookiewx-preferences");
   if (el) el.remove();
 }
