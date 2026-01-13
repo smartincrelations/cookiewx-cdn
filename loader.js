@@ -805,11 +805,18 @@ var c = readConsentFromStorage();
 if (c) {
   applyConsent(c);
   hideBanner();
+  restoreFavicons(); // ✅ qui va bene
 } else {
   window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
   log("ℹ️ CookieWX: nessun consenso, mostro banner.");
   showBanner();
-  injectCookieWXFavicon();   // 👈 AGGIUNGI QUESTA RIGA
+
+  injectCookieWXFavicon(); // ✅
+  
+  // 🔥 FORZA DI NUOVO DOPO WIX
+  setTimeout(injectCookieWXFavicon, 300);
+  setTimeout(injectCookieWXFavicon, 1000);
+
   enforceIframeTeardown();
 }
   // 🔹 3) rianalizza DOM
