@@ -223,10 +223,7 @@ function saveConsent(preferenze, tipo) {
 
     sendConsentToBackend(payload);
 
-restoreFavicons();
-
 showBadge();          // ✅
-updateBadgeState();   // ✅
 
 log("💾 CookieWX: consenso salvato", payload);
   } catch (e) {
@@ -345,7 +342,6 @@ var CWX_PREFERENCES_HTML = `
 
 // ---------- SHOW ----------
 function showPreferences() {
-   injectCookieWXFavicon();
   if (document.getElementById("cookiewx-preferences")) return;
 
   var wrap = document.createElement("div");
@@ -373,7 +369,6 @@ function showPreferences() {
 
 // ---------- HIDE ----------
 function hidePreferences() {
-   restoreFavicons();
   var el = document.getElementById("cookiewx-preferences");
   if (el) el.remove();
 }
@@ -977,7 +972,6 @@ if (c) {
   hideBanner();
 
   showBadge();
-  updateBadgeState();
 
   // ✅ NON toccare favicon se c’è consenso
 } else {
@@ -986,7 +980,6 @@ if (c) {
 
   showBanner();
   showBadge();
-  updateBadgeState();   // ✅ MANCAVA
 
   injectCookieWXFavicon();
   setTimeout(injectCookieWXFavicon, 300);
