@@ -657,10 +657,22 @@ var CWX_BADGE_HTML =
   100% { transform: scale(.9); }
 }
 @media (max-width: 768px) {
-  .cwx-badge {
-    font-size: 18px;      /* ancora più discreta su mobile */
-    opacity: .3;
-    transform: scale(.8);
+  /* contenitore modale */
+  #cookiewx-preferences > div {
+    max-height: 85vh;              /* ⬅️ evita tagli */
+    overflow-y: auto;              /* ⬅️ scroll interno */
+    padding-bottom: 96px;          /* ⬅️ spazio per i bottoni */
+  }
+
+  /* footer bottoni sempre visibile */
+  #cookiewx-preferences > div > div:last-child {
+    position: sticky;
+    bottom: 0;
+    background: #fff;
+    padding-top: 12px;
+    padding-bottom: 12px;
+    margin-top: 16px;
+    z-index: 2;
   }
 }
 `;
