@@ -206,7 +206,7 @@ fetch("https://www.cookiewx.com/_functions/cookiewx-consent", {
   };
 
   root.querySelector('[data-cwx="reject"]').onclick = function () {
-    saveConsent({ essenziali:true, funzionali:false, statistici:false, marketing:false }, "rifiutato");
+    saveConsent({ essenziali:true, funzionali:false, statistici:false, marketing:false }, "ess-only");
     hideBanner();
     kickReload();
   };
