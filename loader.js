@@ -7,11 +7,12 @@
  * - Usa categorie da DB quando disponibili
  * ========================================================= */
 
+// CAP. 0 — BOOT & SAFE GUARD
 (function () {
   if (window.__COOKIEWX_LOADER__) return;
   window.__COOKIEWX_LOADER__ = true;
 
-  // ---------- CONFIG ----------
+// CAP. 1 — CONFIG & COSTANTI
   var DEBUG = true;
 
   var KEYS = {
@@ -22,7 +23,7 @@
   
   var CWX_FAVICONS = [];
 
-// ---------- USER ID ----------
+// CAP. 2 — USER IDENTIFICATION
 function getOrCreateUserId() {
   try {
     var key = "cookiewxUserId";
@@ -41,7 +42,7 @@ function getOrCreateUserId() {
     return "cwx-temp-" + Date.now();
   }
 }
-  
+// CAP. 3 — BRANDING / FAVICON
 function captureFavicons() {
   try {
     document.querySelectorAll('link[rel~="icon"]').forEach(function (el) {
@@ -87,7 +88,7 @@ function captureFavicons() {
 }
   captureFavicons();
 
-// ---------- TICK RELOAD ----------
+// CAP. 4 — UTILS ---------- TICK RELOAD ----------
 function kickReload() {
   try {
     localStorage.setItem(KEYS.TICK, String(Date.now()));
@@ -95,7 +96,7 @@ function kickReload() {
 }
   
   // =====================
-// UI: COOKIEWX BANNER
+// CAP. 5 — UI: BANNER PRINCIPALE
 // =====================
 
   var CWX_BANNER_HTML = `
@@ -196,6 +197,7 @@ fetch("https://www.cookiewx.com/_functions/cookiewxConsent", {
     log("📡 CookieWX → backend", payload);
   } catch (_) {}
 }
+
   
   function bindBannerEvents() {
   var root = document.getElementById("cookiewx-banner");
@@ -219,7 +221,140 @@ fetch("https://www.cookiewx.com/_functions/cookiewxConsent", {
   };
 }
 
-  
+// =========================================================
+// CAP. 6 — UI: PREFERENZE COOKIE (CUSTOM)
+// =========================================================
+
+// stato temporaneo (prima del salvataggio)
+var CWX_TEMP_PREFS = {
+  funzionali: true,
+  statistici: true,
+  marketing: true
+};
+
+// ---------- HTML ----------
+var CWX_PREFERENCES_HTML = `
+<div id="cookiewx-preferences" style="
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.45);
+  z-index:2147483647;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
+">
+  <div style="
+    background:#e9f6e9;
+    max-width:520px;
+    width:90%;
+    padding:24px;
+    border-radius:14px;
+    box-shadow:0 8px 30px rgba(0,0,0,.25);
+  ">
+    <h3 style="margin-top:0">Gestisci preferenze cookie</h3>
+
+    <div style="margin-bottom:16px">
+      <strong>Essenziali</strong><br>
+      <small>Necessari al funzionamento del sito</small><br>
+      <input type="checkbox" checked disabled>
+    </div>
+
+    <div style="margin-bottom:16px">
+      <strong>Funzionali</strong><br>
+      <small>Migliorano l’esperienza utente</small><br>
+      <input type="checkbox" data-cwx-pref="funzionali">
+    </div>
+
+    <div style="margin-bottom:16px">
+      <strong>Statistici</strong><br>
+      <small>Ci aiutano a capire come viene usato il sito</small><br>
+      <input type="checkbox" data-cwx-pref="statistici">
+    </div>
+
+    <div style="margin-bottom:24px">
+      <strong>Marketing</strong><br>
+      <small>Mostrano contenuti e annunci personalizzati</small><br>
+      <input type="checkbox" data-cwx-pref="marketing">
+    </div>
+
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button data-cwx-pref-action="cancel">Annulla</button>
+      <button data-cwx-pref-action="save">Salva preferenze</button>
+    </div>
+  </div>
+</div>
+`;
+
+// ---------- SHOW ----------
+function showPreferences() {
+  if (document.getElementById("cookiewx-preferences")) return;
+
+  var wrap = document.createElement("div");
+  wrap.innerHTML = CWX_PREFERENCES_HTML;
+  document.body.appendChild(wrap.firstElementChild);
+
+  // inizializza da consenso esistente (se presente)
+  var existing = readConsentFromStorage();
+  if (existing) {
+    CWX_TEMP_PREFS = {
+      funzionali: existing.funzionali,
+      statistici: existing.statistici,
+      marketing: existing.marketing
+    };
+  }
+
+  // applica stato agli switch
+  document.querySelectorAll("[data-cwx-pref]").forEach(function (el) {
+    var k = el.getAttribute("data-cwx-pref");
+    el.checked = !!CWX_TEMP_PREFS[k];
+  });
+
+  bindPreferencesEvents();
+}
+
+// ---------- HIDE ----------
+function hidePreferences() {
+  var el = document.getElementById("cookiewx-preferences");
+  if (el) el.remove();
+}
+
+// ---------- EVENTS ----------
+function bindPreferencesEvents() {
+  var root = document.getElementById("cookiewx-preferences");
+  if (!root) return;
+
+  // toggle
+  root.querySelectorAll("[data-cwx-pref]").forEach(function (el) {
+    el.onchange = function () {
+      var k = el.getAttribute("data-cwx-pref");
+      CWX_TEMP_PREFS[k] = el.checked;
+    };
+  });
+
+  // annulla
+  root.querySelector('[data-cwx-pref-action="cancel"]').onclick = function () {
+    hidePreferences();
+    showBanner();
+  };
+
+  // salva
+  root.querySelector('[data-cwx-pref-action="save"]').onclick = function () {
+    saveConsent(
+      {
+        essenziali: true,
+        funzionali: CWX_TEMP_PREFS.funzionali,
+        statistici: CWX_TEMP_PREFS.statistici,
+        marketing: CWX_TEMP_PREFS.marketing
+      },
+      "custom"
+    );
+
+    hidePreferences();
+    hideBanner();
+    kickReload();
+  };
+}
 
   // ---------- SAFE LOG ----------
   function log() {
