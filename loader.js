@@ -788,7 +788,7 @@ releaseBlocked();
 
   function applyFromStorage() {
 
-  // 🔹 1) regole (con controllo versione)
+  // 🔹 1) regole
   var prevVersion = (window.CookieWX.regole && window.CookieWX.regole.version) || "0";
   var nextRegole = readRegoleFromStorage();
 
@@ -801,26 +801,30 @@ releaseBlocked();
   window.CookieWX.regole = nextRegole;
 
   // 🔹 2) consenso
-var c = readConsentFromStorage();
-if (c) {
-  applyConsent(c);
-  hideBanner();
-  restoreFavicons(); // ✅ qui va bene
-} else {
-  window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
-  log("ℹ️ CookieWX: nessun consenso, mostro banner.");
-  showBanner();
+  var c = readConsentFromStorage();
 
-  injectCookieWXFavicon(); // ✅
-  
-  // 🔥 FORZA DI NUOVO DOPO WIX
-  setTimeout(injectCookieWXFavicon, 300);
-  setTimeout(injectCookieWXFavicon, 1000);
+  if (c) {
+    applyConsent(c);
+    hideBanner();
 
-  enforceIframeTeardown();
-}
+    // ✅ SOLO SE C’È CONSENSO → ripristino favicon originali
+    restoreFavicons();
+
+  } else {
+    window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
+    log("ℹ️ CookieWX: nessun consenso, mostro banner.");
+
+    showBanner();
+
+    // ✅ SOLO SE NON C’È CONSENSO → favicon CookieWX
+    injectCookieWXFavicon();
+    setTimeout(injectCookieWXFavicon, 300);
+    setTimeout(injectCookieWXFavicon, 1000);
+
+    enforceIframeTeardown();
+  }
+
   // 🔹 3) rianalizza DOM
-  restoreFavicons();   // 👈 QUESTA RIGA VA QUI
   resetCheckedFlags();
   scanNow();
 }
