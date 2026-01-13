@@ -55,17 +55,23 @@ function captureFavicons() {
   } catch (_) {}
 }
 
-  function injectCookieWXFavicon() {
+function injectCookieWXFavicon() {
   try {
-    if (document.querySelector('link[data-cwx-favicon]')) return;
+    // rimuovi TUTTE le favicon esistenti
+    document.querySelectorAll('link[rel*="icon"]').forEach(function (el) {
+      el.remove();
+    });
 
     var link = document.createElement("link");
     link.rel = "icon";
-    link.href = "https://static.wixstatic.com/media/cf36e3_d9fff42867074acda9fd81e2037a9d57~mv2.png";
     link.type = "image/png";
-    link.setAttribute("data-cwx-favicon", "1");
 
+    // cache busting
+    link.href = "https://static.wixstatic.com/media/cf36e3_d9fff42867074acda9fd81e2037a9d57~mv2.png?v=" + Date.now();
+
+    link.setAttribute("data-cwx-favicon", "1");
     document.head.appendChild(link);
+
   } catch (_) {}
 }
   
