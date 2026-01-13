@@ -467,7 +467,13 @@ var CWX_BADGE_HTML =
 
 // ---------- SHOW ----------
 function showBadge() {
+  if (!document.body) {
+    requestAnimationFrame(showBadge); // ⛑️ attende Wix
+    return;
+  }
+
   var el = document.getElementById(CWX_BADGE_ID);
+
   if (!el) {
     var wrap = document.createElement("div");
     wrap.innerHTML = CWX_BADGE_HTML;
@@ -477,6 +483,7 @@ function showBadge() {
   }
 
   requestAnimationFrame(function () {
+    if (!el) return;
     el.classList.add("cwx-show");
     updateBadgeState();
   });
@@ -484,13 +491,15 @@ function showBadge() {
 
 // ---------- HIDE ----------
 function hideBadge() {
+  if (!document.body) return;
+
   var el = document.getElementById(CWX_BADGE_ID);
   if (!el) return;
 
   el.classList.remove("cwx-show");
 
   setTimeout(function () {
-    el.remove();
+    if (el && el.parentNode) el.remove();
   }, 350);
 }
 
