@@ -449,6 +449,27 @@ var CWX_PREFERENCES_HTML = `
       pointer-events: none;
     }
     /* ===========================
+   ESSENZIALI (DISABLED STATE)
+=========================== */
+
+.cwx-disabled .cwx-slider {
+  background-color: #e0e0e0 !important;
+  cursor: default;
+}
+
+.cwx-disabled .cwx-slider:before {
+  background-color: #ffffff;
+  box-shadow: none;
+}
+
+.cwx-disabled input:checked + .cwx-slider {
+  background-color: #e0e0e0 !important;
+}
+
+.cwx-disabled .cwx-slider:hover {
+  box-shadow: none;
+}
+    /* ===========================
    BUTTON INTERACTIONS
 =========================== */
 
@@ -513,6 +534,32 @@ var CWX_PREFERENCES_HTML = `
     .cwx-switch:hover .cwx-slider {
       box-shadow: 0 0 0 6px rgba(46,204,113,.15);
     }
+    /* ===========================
+   TYPOGRAPHY IMPROVEMENTS
+=========================== */
+
+#cookiewx-preferences h2 {
+  font-size: 24px;
+  line-height: 1.3;
+}
+
+#cookiewx-preferences p {
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+#cookiewx-preferences strong {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+#cookiewx-preferences small {
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+  margin-top: 4px;
+  color: #666;
+}
   `;
   document.head.appendChild(style);
 })();
