@@ -185,9 +185,11 @@ var payload = {
   referrer: document.referrer || null
 };
 
-fetch("https://www.cookiewx.com/_functions/cookiewx-consent", {
+fetch("https://www.cookiewx.com/_functions/cookiewxConsent", {
   method: "POST",
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json"
+  },
   body: JSON.stringify(payload)
 });
 
