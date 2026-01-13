@@ -182,7 +182,7 @@ function kickReload() {
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
       <button data-cwx="accept">Accetta tutto</button>
-      <button data-cwx="reject">Rifiuta</button>
+      <button data-cwx="reject">Rifiuta tutto</button>
       <button data-cwx="prefs">Gestisci preferenze</button>
     </div>
     <div style="
@@ -193,16 +193,16 @@ function kickReload() {
   font-size:12px;
   color:#666;
 ">
-  <span>Powered by</span>
-  <a href="https://www.cookiewx.com" target="_blank" rel="noopener"
-     style="display:flex;align-items:center;gap:6px;text-decoration:none;color:#000;">
-    <img
-      src="https://static.wixstatic.com/media/cf36e3_d9fff42867074acda9fd81e2037a9d57~mv2.png"
-      alt="CookieWX"
-      style="width:18px;height:18px;border-radius:50%;"
-    >
-    <strong>CookieWX</strong>
-  </a>
+  <a href="https://www.cookiewx.com"
+   target="_blank"
+   rel="noopener"
+   style="display:flex;align-items:center;gap:6px;text-decoration:none;">
+  <img
+    src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
+    alt="Powered by CookieWX"
+    style="height:22px;width:auto;"
+  >
+</a>
 </div>
   </div>
 </div>
@@ -238,18 +238,13 @@ function kickReload() {
       transform: scale(.97);
     }
 
-    /* Accetta */
-    #cookiewx-banner button[data-cwx="accept"]{
-      background:#000;
-      color:#fff;
-      box-shadow: 0 6px 16px rgba(0,0,0,.18);
-    }
-
-    /* Rifiuta */
-    #cookiewx-banner button[data-cwx="reject"]{
-      background:#f1f1f1;
-      color:#111;
-    }
+   /* Accetta + Rifiuta (stessa evidenza – COMPLIANCE) */
+#cookiewx-banner button[data-cwx="accept"],
+#cookiewx-banner button[data-cwx="reject"]{
+  background:#000;
+  color:#fff;
+  box-shadow: 0 6px 16px rgba(0,0,0,.18);
+}
 
     /* Preferenze */
     #cookiewx-banner button[data-cwx="prefs"]{
