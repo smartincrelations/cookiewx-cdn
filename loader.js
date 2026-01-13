@@ -620,21 +620,31 @@ var CWX_BADGE_HTML =
   position: fixed;
   bottom: 20px;
   left: 20px;
-  font-size: 32px;
+
+  font-size: 22px;              /* 🔽 più piccolo */
   cursor: pointer;
   z-index: 2147483647;
 
   background: none;
   box-shadow: none;
 
-  opacity: 0;
-  transform: translateY(10px);
-  transition: opacity .35s ease, transform .35s ease;
+  opacity: .45;                 /* 🔽 più trasparente */
+  transform: scale(.85) translateY(10px);
+
+  transition:
+    opacity .25s ease,
+    transform .25s ease;
 }
 
 .cwx-badge.cwx-show {
+  opacity: .6;
+  transform: scale(.9) translateY(0);
+}
+/* Hover desktop / focus */
+.cwx-badge:hover,
+.cwx-badge:focus-visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: scale(1);
 }
 
 .cwx-badge.cwx-pulse {
@@ -642,9 +652,16 @@ var CWX_BADGE_HTML =
 }
 
 @keyframes cwx-pulse {
-  0%   { transform: scale(1); }
-  50%  { transform: scale(1.1); }
-  100% { transform: scale(1); }
+  0%   { transform: scale(.9); }
+  50%  { transform: scale(1); }
+  100% { transform: scale(.9); }
+}
+@media (max-width: 768px) {
+  .cwx-badge {
+    font-size: 18px;      /* ancora più discreta su mobile */
+    opacity: .3;
+    transform: scale(.8);
+  }
 }
 `;
   document.head.appendChild(style);
