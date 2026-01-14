@@ -238,13 +238,6 @@ function kickReload() {
       transform: scale(.97);
     }
 
-   /* Accetta + Rifiuta (stessa evidenza – COMPLIANCE) */
-#cookiewx-banner button[data-cwx="accept"],
-#cookiewx-banner button[data-cwx="reject"]{
-  background:#000;
-  color:#fff;
-  box-shadow: 0 6px 16px rgba(0,0,0,.18);
-}
 
     /* Accetta + Rifiuta (stessa evidenza – COMPLIANCE) */
 #cookiewx-banner button[data-cwx="accept"],
