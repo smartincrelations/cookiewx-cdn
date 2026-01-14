@@ -215,9 +215,6 @@ function kickReload() {
       opacity:1;
       transform: translateY(0);
     }
-    #cookiewx-banner img[alt="Powered by CookieWX"]{
-  transform: scale(2);
-}
 
     /* BOTTONI */
     #cookiewx-banner button{
@@ -257,22 +254,6 @@ function kickReload() {
     box-shadow: 0 6px 16px rgba(0,64,128,.18);
   }
 
-  /* 🔧 FIX logo CookieWX */
-  #cookiewx-banner a img {
-    display: block;
-  }
-
-  /* 🔧 FORCE SIZE logo CookieWX (anche se Wix tocca inline) */
-#cookiewx-banner img[alt="Powered by CookieWX"]{
-  height: 50px !important;
-  width: auto !important;
-  max-height: none !important;
-}
-  /* 🔧 Allineamento logo CookieWX */
-  #cookiewx-banner a {
-    align-self: center;
-  }
-
   /* ===============================
    Powered by CookieWX (SAFE)
    =============================== */
@@ -295,13 +276,6 @@ function kickReload() {
   display: block;
 }
   
-/* Desktop: più spazio al logo */
-@media (min-width: 769px){
-  #cookiewx-banner img[alt="Powered by CookieWX"]{
-    margin-left: 16px;
-  }
-}
-
 /* Mobile */
 @media (max-width: 768px){
   #cookiewx-banner > div > div{
@@ -312,22 +286,57 @@ function kickReload() {
     text-align:center;
   }
 
-  /* Logo CookieWX centrato su mobile */
-  #cookiewx-banner a{
-    margin-left: auto;
-    margin-right: auto;
-  }
-
-  #cookiewx-banner img[alt="Powered by CookieWX"]{
-    display: block;
-    margin-left: auto;
-    margin-right: auto;
-  }
   /* Mobile: Powered by centrato */
 #cookiewx-banner .cwx-powered-wrap{
   justify-content: center;
   width: 100%;
 }
+}
+/* ===============================
+   Powered by CookieWX (UNICA FONTE)
+   =============================== */
+
+#cookiewx-banner .cwx-powered-wrap{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666;
+}
+
+/* testo */
+#cookiewx-banner .cwx-powered-text{
+  white-space: nowrap;
+}
+
+/* logo – DESKTOP */
+#cookiewx-banner .cwx-powered-link img{
+  height: 64px;          /* ← grande come volevi (ex scale 2) */
+  width: auto;
+  display: block;
+}
+
+/* desktop: un po’ di respiro */
+@media (min-width: 769px){
+  #cookiewx-banner .cwx-powered-wrap{
+    margin-left: 16px;
+  }
+}
+
+/* ===============================
+   Mobile
+   =============================== */
+@media (max-width: 768px){
+
+  #cookiewx-banner .cwx-powered-wrap{
+    width: 100%;
+    justify-content: center;
+    margin-top: 12px;
+  }
+
+  #cookiewx-banner .cwx-powered-link img{
+    height: 48px;        /* leggermente ridotto su mobile */
+  }
 }
   `;
   document.head.appendChild(style);
