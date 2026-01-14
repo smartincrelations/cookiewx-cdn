@@ -185,23 +185,17 @@ function kickReload() {
       <button data-cwx="reject">Rifiuta tutto</button>
       <button data-cwx="prefs">Gestisci preferenze</button>
     </div>
-    <div style="
-  margin-top:0;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  font-size:14px;
-  color:#666;
-">
+   <div class="cwx-powered-wrap">
+  <span class="cwx-powered-text">Powered by</span>
   <a href="https://www.cookiewx.com"
-   target="_blank"
-   rel="noopener"
-   style="display:flex;align-items:center;gap:6px;text-decoration:none;">
-  <img
-    src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
-    alt="Powered by CookieWX"
-  >
-</a>
+     target="_blank"
+     rel="noopener"
+     class="cwx-powered-link">
+    <img
+      src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
+      alt="CookieWX"
+    >
+  </a>
 </div>
   </div>
 </div>
@@ -223,19 +217,6 @@ function kickReload() {
     }
     #cookiewx-banner img[alt="Powered by CookieWX"]{
   transform: scale(2);
-}
-/* Powered by (STABILE, NO REFLOW) */
-#cookiewx-banner .cwx-powered{
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-#cookiewx-banner .cwx-powered::before{
-  content: "Powered by";
-  font-size: 13px;
-  color: #555;
-  white-space: nowrap;
 }
 
     /* BOTTONI */
@@ -291,6 +272,28 @@ function kickReload() {
   #cookiewx-banner a {
     align-self: center;
   }
+
+  /* ===============================
+   Powered by CookieWX (SAFE)
+   =============================== */
+
+#cookiewx-banner .cwx-powered-wrap{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666;
+}
+
+#cookiewx-banner .cwx-powered-text{
+  white-space: nowrap;
+}
+
+#cookiewx-banner .cwx-powered-link img{
+  height: 50px;
+  width: auto;
+  display: block;
+}
   
 /* Desktop: più spazio al logo */
 @media (min-width: 769px){
@@ -320,6 +323,11 @@ function kickReload() {
     margin-left: auto;
     margin-right: auto;
   }
+  /* Mobile: Powered by centrato */
+#cookiewx-banner .cwx-powered-wrap{
+  justify-content: center;
+  width: 100%;
+}
 }
   `;
   document.head.appendChild(style);
