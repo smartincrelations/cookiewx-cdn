@@ -224,6 +224,19 @@ function kickReload() {
     #cookiewx-banner img[alt="Powered by CookieWX"]{
   transform: scale(2);
 }
+/* Powered by (STABILE, NO REFLOW) */
+#cookiewx-banner .cwx-powered{
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+#cookiewx-banner .cwx-powered::before{
+  content: "Powered by";
+  font-size: 13px;
+  color: #555;
+  white-space: nowrap;
+}
 
     /* BOTTONI */
     #cookiewx-banner button{
