@@ -279,17 +279,36 @@ function kickReload() {
   #cookiewx-banner a {
     align-self: center;
   }
+  
+/* Desktop: più spazio al logo */
+@media (min-width: 769px){
+  #cookiewx-banner img[alt="Powered by CookieWX"]{
+    margin-left: 16px;
+  }
+}
 
-    /* Mobile */
-    @media (max-width: 768px){
-      #cookiewx-banner > div > div{
-        width:100%;
-      }
-      #cookiewx-banner button{
-        width:100%;
-        text-align:center;
-      }
-    }
+/* Mobile */
+@media (max-width: 768px){
+  #cookiewx-banner > div > div{
+    width:100%;
+  }
+  #cookiewx-banner button{
+    width:100%;
+    text-align:center;
+  }
+
+  /* Logo CookieWX centrato su mobile */
+  #cookiewx-banner a{
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  #cookiewx-banner img[alt="Powered by CookieWX"]{
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
   `;
   document.head.appendChild(style);
 })();
