@@ -247,11 +247,11 @@ function kickReload() {
   box-shadow: 0 6px 16px rgba(0,0,0,.18);
 }
 
-/* Gestisci preferenze – stesso peso, colore diverso */
+/* Gestisci preferenze – attivo, informativo */
 #cookiewx-banner button[data-cwx="prefs"]{
-  background:#f2f2f2;
-  color:#000;
-  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+  background:#e6f0ff;              /* azzurro chiaro */
+  color:#003366;                   /* blu leggibile */
+  box-shadow: 0 6px 16px rgba(0,64,128,.18);
 }
 
     /* Mobile */
