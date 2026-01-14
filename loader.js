@@ -194,13 +194,8 @@ function kickReload() {
     <img
   src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
   alt="CookieWX"
-  style="
-    height:32px;
-    transform:scale(2);
-    transform-origin:left center;
-    display:block;
-  "
->
+  class="cwx-powered-logo"
+/>
   </a>
 </div>
   </div>
@@ -261,7 +256,7 @@ function kickReload() {
   }
 
 /* ===============================
-   Powered by CookieWX (UNICA FONTE – DEFINITIVA)
+   Powered by CookieWX – DEFINITIVO
    =============================== */
 
 #cookiewx-banner .cwx-powered-wrap{
@@ -277,38 +272,27 @@ function kickReload() {
   white-space: nowrap;
 }
 
-/* LOGO – DESKTOP (doppio grande) */
-#cookiewx-banner .cwx-powered-link img{
-  height: 32px;
+/* LOGO – DESKTOP */
+#cookiewx-banner .cwx-powered-logo{
+  height: 64px;          /* ✅ grande davvero */
   width: auto;
   display: block;
-  transform: scale(2) !important;   /* ⬅️ FORZA DESKTOP */
-  transform-origin: left center;
-}
-
-/* desktop: un po’ di respiro */
-@media (min-width: 769px){
-  #cookiewx-banner .cwx-powered-wrap{
-    margin-left: 16px;
-  }
 }
 
 /* ===============================
    Mobile
    =============================== */
 @media (max-width: 768px){
-
   #cookiewx-banner .cwx-powered-wrap{
     width: 100%;
     justify-content: center;
     margin-top: 12px;
   }
 
-  #cookiewx-banner .cwx-powered-link img{
-    height: 48px;   /* ⬅️ mobile più piccolo ma leggibile */
+  #cookiewx-banner .cwx-powered-logo{
+    height: 48px;        /* ✅ mobile corretto */
   }
 
-  /* layout mobile generale (già corretto) */
   #cookiewx-banner > div > div{
     width:100%;
   }
