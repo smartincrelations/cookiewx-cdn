@@ -174,10 +174,12 @@ function kickReload() {
 </div>
       <span style="font-size:14px;color:#444">
   Utilizziamo cookie essenziali per il funzionamento del sito.
-  Per saperne di più consulta la
-  <a href="#" data-cwx-policy style="color:#000;text-decoration:underline;">
-    Cookie e privacy policy
-  </a>.
+  <span id="cwx-policy-line">
+    Per saperne di più consulta la
+    <a href="#" data-cwx-policy style="color:#000;text-decoration:underline;">
+      Cookie e privacy policy
+    </a>.
+  </span>
 </span>
     </div>
     <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -246,14 +248,13 @@ function kickReload() {
   box-shadow: 0 6px 16px rgba(0,0,0,.18);
 }
 
-    /* Preferenze */
-    #cookiewx-banner button[data-cwx="prefs"]{
-      background: transparent;
-      color:#111;
-      text-decoration: underline;
-      padding-left: 6px;
-      padding-right: 6px;
-    }
+#cookiewx-banner button[data-cwx="prefs"]{
+  background:#000;
+  color:#fff;
+  box-shadow: 0 6px 16px rgba(0,0,0,.18);
+}
+
+    
 
     /* Mobile */
     @media (max-width: 768px){
@@ -384,12 +385,16 @@ fetch("https://www.cookiewx.com/_functions/cookiewxConsent", {
   if (!link) return;
 
   var url = getPolicyUrl();
+    var line = document.getElementById("cwx-policy-line");
+
   if (url) {
     link.href = url;
     link.target = "_blank";
     link.rel = "noopener";
+    if (line) line.style.display = "inline";
   } else {
-    link.style.display = "none"; // se non configurata
+    // nascondo l'intera frase per evitare "consulta la ."
+    if (line) line.style.display = "none";
   }
 }
 // =========================================================
