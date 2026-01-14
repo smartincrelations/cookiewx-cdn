@@ -254,46 +254,8 @@ function kickReload() {
     box-shadow: 0 6px 16px rgba(0,64,128,.18);
   }
 
-  /* ===============================
-   Powered by CookieWX (SAFE)
-   =============================== */
-
-#cookiewx-banner .cwx-powered-wrap{
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  color: #666;
-}
-
-#cookiewx-banner .cwx-powered-text{
-  white-space: nowrap;
-}
-
-#cookiewx-banner .cwx-powered-link img{
-  height: 50px;
-  width: auto;
-  display: block;
-}
-  
-/* Mobile */
-@media (max-width: 768px){
-  #cookiewx-banner > div > div{
-    width:100%;
-  }
-  #cookiewx-banner button{
-    width:100%;
-    text-align:center;
-  }
-
-  /* Mobile: Powered by centrato */
-#cookiewx-banner .cwx-powered-wrap{
-  justify-content: center;
-  width: 100%;
-}
-}
 /* ===============================
-   Powered by CookieWX (UNICA FONTE)
+   Powered by CookieWX (UNICA FONTE – DEFINITIVA)
    =============================== */
 
 #cookiewx-banner .cwx-powered-wrap{
@@ -309,9 +271,9 @@ function kickReload() {
   white-space: nowrap;
 }
 
-/* logo – DESKTOP */
+/* LOGO – DESKTOP (doppio grande) */
 #cookiewx-banner .cwx-powered-link img{
-  height: 64px;          /* ← grande come volevi (ex scale 2) */
+  height: 64px;      /* ⬅️ QUI è il “doppio” */
   width: auto;
   display: block;
 }
@@ -335,7 +297,17 @@ function kickReload() {
   }
 
   #cookiewx-banner .cwx-powered-link img{
-    height: 48px;        /* leggermente ridotto su mobile */
+    height: 48px;   /* ⬅️ mobile più piccolo ma leggibile */
+  }
+
+  /* layout mobile generale (già corretto) */
+  #cookiewx-banner > div > div{
+    width:100%;
+  }
+
+  #cookiewx-banner button{
+    width:100%;
+    text-align:center;
   }
 }
   `;
