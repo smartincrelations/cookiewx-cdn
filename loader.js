@@ -197,10 +197,18 @@ function kickReload() {
    target="_blank"
    rel="noopener"
    style="display:flex;align-items:center;gap:6px;text-decoration:none;">
+  
+  <span style="
+    font-size:13px;
+    color:#555;
+    white-space:nowrap;
+  ">
+    Powered by
+  </span>
+
   <img
     src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
-    alt="Powered by CookieWX"
-    style="height:36px;width:auto;opacity:.9;"
+    alt="CookieWX"
   >
 </a>
 </div>
