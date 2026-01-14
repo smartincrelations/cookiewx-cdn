@@ -270,7 +270,9 @@ function kickReload() {
 
 /* LOGO – DESKTOP */
 #cookiewx-banner .cwx-powered-link img{
-  height: 64px;      /* 🔥 grande vero */
+  height: 64px !important;
+  max-height: none !important;
+  max-width: none !important;
   width: auto;
   display: block;
 }
