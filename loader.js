@@ -186,11 +186,11 @@ function kickReload() {
       <button data-cwx="prefs">Gestisci preferenze</button>
     </div>
     <div style="
-  margin-top:12px;
+  margin-top:0;
   display:flex;
   align-items:center;
-  gap:8px;
-  font-size:12px;
+  gap:10px;
+  font-size:14px;
   color:#666;
 ">
   <a href="https://www.cookiewx.com"
@@ -200,7 +200,7 @@ function kickReload() {
   <img
     src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
     alt="Powered by CookieWX"
-    style="height:30px;width:auto;opacity:.85;"
+    style="height:36px;width:auto;opacity:.9;"
   >
 </a>
 </div>
@@ -272,6 +272,10 @@ function kickReload() {
   width: auto !important;
   max-height: none !important;
 }
+  /* 🔧 Allineamento logo CookieWX */
+  #cookiewx-banner a {
+    align-self: center;
+  }
 
     /* Mobile */
     @media (max-width: 768px){
