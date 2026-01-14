@@ -188,7 +188,9 @@ function kickReload() {
   <div class="cwx-powered-wrap">
   <span class="cwx-powered-text">Powered by</span>
   <a href="https://www.cookiewx.com" target="_blank" rel="noopener" class="cwx-powered-link">
-    <img src="..." alt="CookieWX">
+    <img
+  src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
+  alt="CookieWX">
   </a>
 </div>
   </div>
@@ -340,14 +342,20 @@ function showBanner() {
 
     // 🔒 FORZA LOGO COOKIEWX (post-mount, anti-Wix)
 requestAnimationFrame(function () {
+  var wrap = banner.querySelector('.cwx-powered-wrap');
   var logo = banner.querySelector('.cwx-powered-link img');
-  if (!logo) return;
+  if (!logo || !wrap) return;
 
-  // reset Wix side-effects
+  // wrapper respira
+  wrap.style.display = 'flex';
+  wrap.style.alignItems = 'center';
+  wrap.style.gap = '8px';
+
+  // reset Wix
   logo.style.maxHeight = 'none';
   logo.style.maxWidth = 'none';
 
-  // dimensione base + scala
+  // base + scala
   logo.style.height = '32px';
   logo.style.width = 'auto';
   logo.style.transform = 'scale(2)';
