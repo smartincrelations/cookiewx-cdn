@@ -162,7 +162,7 @@ function kickReload() {
   box-shadow:0 -4px 12px rgba(0,0,0,.15);
   font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
 ">
-  <div style="max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;">
+  <div style="max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;position:relative;">
     <div style="flex:1;min-width:260px;">
       <div style="
   font-size:18px;
@@ -185,22 +185,10 @@ function kickReload() {
       <button data-cwx="reject">Rifiuta tutto</button>
       <button data-cwx="prefs">Gestisci preferenze</button>
     </div>
-   <div class="cwx-powered-wrap">
+  <div class="cwx-powered-wrap">
   <span class="cwx-powered-text">Powered by</span>
-  <a href="https://www.cookiewx.com"
-     target="_blank"
-     rel="noopener"
-     class="cwx-powered-link">
-    <img
-  src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
-  alt="CookieWX"
-  style="
-    height:32px;
-    transform:scale(2);
-    transform-origin:left center;
-    display:block;
-  "
->
+  <a href="https://www.cookiewx.com" target="_blank" rel="noopener" class="cwx-powered-link">
+    <img src="..." alt="CookieWX">
   </a>
 </div>
   </div>
@@ -349,6 +337,23 @@ function showBanner() {
 
     bindBannerEvents();
     bindPolicyLink();
+
+    // 🔒 FORZA LOGO COOKIEWX (post-mount, anti-Wix)
+requestAnimationFrame(function () {
+  var logo = banner.querySelector('.cwx-powered-link img');
+  if (!logo) return;
+
+  // reset Wix side-effects
+  logo.style.maxHeight = 'none';
+  logo.style.maxWidth = 'none';
+
+  // dimensione base + scala
+  logo.style.height = '32px';
+  logo.style.width = 'auto';
+  logo.style.transform = 'scale(2)';
+  logo.style.transformOrigin = 'left center';
+  logo.style.display = 'block';
+});
   }
 
   mount();
