@@ -331,6 +331,18 @@ function showBanner() {
     var banner = wrap.firstElementChild;
     document.body.appendChild(banner);
 
+    // 🔥 FORCE LOGO SCALE (ANTI-WIX)
+requestAnimationFrame(function () {
+  var logo = banner.querySelector('.cwx-powered-link img');
+  if (!logo) return;
+
+  logo.style.height = '32px';
+  logo.style.width = 'auto';
+  logo.style.transform = 'scale(2)';
+  logo.style.transformOrigin = 'left center';
+  logo.style.display = 'block';
+});
+
     // anima in ingresso
     requestAnimationFrame(function () {
       banner.classList.add("cwx-banner-show");
