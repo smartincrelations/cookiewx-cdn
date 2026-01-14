@@ -261,6 +261,9 @@ function kickReload() {
   font-size: 13px;
   color: #666;
   margin-left: 16px;
+
+  transform: scale(2);
+  transform-origin: right center;
 }
 
 /* testo */
@@ -270,9 +273,7 @@ function kickReload() {
 
 /* LOGO – DESKTOP */
 #cookiewx-banner .cwx-powered-link img{
-  height: 64px !important;
-  max-height: none !important;
-  max-width: none !important;
+  height: 32px;
   width: auto;
   display: block;
 }
@@ -286,10 +287,16 @@ function kickReload() {
     width: 100%;
     justify-content: center;
     margin-top: 12px;
+
+    transform: scale(1.4);       /* ⬅️ controllo mobile */
+    transform-origin: center;
   }
 
+  /* img resta neutra */
   #cookiewx-banner .cwx-powered-link img{
-    height: 48px;
+    height: 32px;
+    width: auto;
+    display: block;
   }
 
   #cookiewx-banner > div > div{
