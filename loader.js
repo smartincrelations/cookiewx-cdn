@@ -273,9 +273,11 @@ function kickReload() {
 
 /* LOGO – DESKTOP (doppio grande) */
 #cookiewx-banner .cwx-powered-link img{
-  height: 64px;      /* ⬅️ QUI è il “doppio” */
+  height: 32px;              /* base */
   width: auto;
   display: block;
+  transform: scale(2);      /* ⬅️ RADDOPPIO VISIVO */
+  transform-origin: left center;
 }
 
 /* desktop: un po’ di respiro */
