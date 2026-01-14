@@ -293,18 +293,27 @@ function showBanner() {
   hideBadge();
   if (document.getElementById("cookiewx-banner")) return;
 
-  var wrap = document.createElement("div");
-  wrap.innerHTML = CWX_BANNER_HTML;
-  var banner = wrap.firstElementChild;
-  document.body.appendChild(banner);
+  function mount() {
+    if (!document.body) {
+      requestAnimationFrame(mount); // ⛑️ attende Wix
+      return;
+    }
 
-  // forza layout
-banner.style.display = "block";
-banner.style.opacity = "1";
-banner.style.transform = "none";
+    var wrap = document.createElement("div");
+    wrap.innerHTML = CWX_BANNER_HTML;
+    var banner = wrap.firstElementChild;
 
-  bindBannerEvents();
-  bindPolicyLink();
+    document.body.appendChild(banner);
+
+    requestAnimationFrame(function () {
+      banner.classList.add("cwx-show");
+    });
+
+    bindBannerEvents();
+    bindPolicyLink();
+  }
+
+  mount();
 }
 
 function hideBanner() {
