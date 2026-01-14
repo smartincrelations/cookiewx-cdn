@@ -254,6 +254,18 @@ function kickReload() {
   box-shadow: 0 6px 16px rgba(0,64,128,.18);
 }
 
+  /* Preferenze */
+  #cookiewx-banner button[data-cwx="prefs"]{
+    background:#e6f0ff;
+    color:#003366;
+    box-shadow: 0 6px 16px rgba(0,64,128,.18);
+  }
+
+  /* 🔧 FIX logo CookieWX */
+  #cookiewx-banner a img {
+    display: block;
+  }
+
     /* Mobile */
     @media (max-width: 768px){
       #cookiewx-banner > div > div{
