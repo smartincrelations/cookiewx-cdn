@@ -182,11 +182,23 @@ function kickReload() {
   </span>
 </span>
     </div>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-      <button data-cwx="accept">Accetta tutto</button>
-      <button data-cwx="reject">Rifiuta tutto</button>
-      <button data-cwx="prefs">Gestisci preferenze</button>
-    </div>
+    <div class="cwx-actions">
+  <button data-cwx="accept">Accetta tutto</button>
+  <button data-cwx="reject">Rifiuta tutto</button>
+  <button data-cwx="prefs">Gestisci preferenze</button>
+
+  <div id="cwx-poweredby">
+    <span>Powered by</span>
+    <a href="https://www.cookiewx.com"
+       target="_blank"
+       rel="noopener"
+       aria-label="CookieWX">
+      <img
+        src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
+        alt="CookieWX">
+    </a>
+  </div>
+</div>
     <div id="cwx-poweredby">
   <span>Powered by</span>
   <a href="https://www.cookiewx.com"
@@ -220,6 +232,37 @@ function kickReload() {
 
     /* BOTTONI */
     #cookiewx-banner button{
+    /* ===============================
+   Actions row
+   =============================== */
+#cookiewx-banner .cwx-actions{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  flex-wrap:wrap;
+}
+
+/* ===============================
+   Powered by CookieWX (FORZATO)
+   =============================== */
+#cwx-poweredby{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding-left:8px;
+  white-space:nowrap;
+}
+
+#cwx-poweredby span{
+  font-size:12px;
+  color:#666;
+}
+
+#cwx-poweredby img{
+  height:32px !important;   /* 🔥 QUI È LA CHIAVE */
+  width:auto !important;
+  display:block;
+}
       appearance:none;
       border:0;
       border-radius:10px;
