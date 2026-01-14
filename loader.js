@@ -251,21 +251,16 @@ function kickReload() {
   }
 
 /* ===============================
-   Powered by CookieWX – FIX DEFINITIVO
+   Powered by CookieWX – STABILE
    =============================== */
 
 #cookiewx-banner .cwx-powered-wrap{
-  position: absolute;
-  right: 20px;
-  bottom: 16px;
-
   display: flex;
   align-items: center;
   gap: 8px;
-
   font-size: 13px;
   color: #666;
-  pointer-events: auto;
+  margin-left: 16px;
 }
 
 /* testo */
@@ -275,7 +270,7 @@ function kickReload() {
 
 /* LOGO – DESKTOP */
 #cookiewx-banner .cwx-powered-link img{
-  height: 64px;          /* 🔥 GRANDE SU DESKTOP */
+  height: 64px;      /* 🔥 grande vero */
   width: auto;
   display: block;
 }
@@ -286,17 +281,15 @@ function kickReload() {
 @media (max-width: 768px){
 
   #cookiewx-banner .cwx-powered-wrap{
-    position: static;
     width: 100%;
     justify-content: center;
     margin-top: 12px;
   }
 
   #cookiewx-banner .cwx-powered-link img{
-    height: 48px;        /* 🔽 più piccolo su mobile */
+    height: 48px;
   }
 
-  /* layout mobile generale */
   #cookiewx-banner > div > div{
     width:100%;
   }
@@ -338,28 +331,6 @@ function showBanner() {
     bindBannerEvents();
     bindPolicyLink();
 
-    // 🔒 FORZA LOGO COOKIEWX (post-mount, anti-Wix)
-requestAnimationFrame(function () {
-  var wrap = banner.querySelector('.cwx-powered-wrap');
-  var logo = banner.querySelector('.cwx-powered-link img');
-  if (!logo || !wrap) return;
-
-  // wrapper respira
-  wrap.style.display = 'flex';
-  wrap.style.alignItems = 'center';
-  wrap.style.gap = '8px';
-
-  // reset Wix
-  logo.style.maxHeight = 'none';
-  logo.style.maxWidth = 'none';
-
-  // base + scala
-  logo.style.height = '32px';
-  logo.style.width = 'auto';
-  logo.style.transform = 'scale(2)';
-  logo.style.transformOrigin = 'left center';
-  logo.style.display = 'block';
-});
   }
 
   mount();
