@@ -251,15 +251,21 @@ function kickReload() {
   }
 
 /* ===============================
-   Powered by CookieWX (UNICA FONTE – DEFINITIVA)
+   Powered by CookieWX – FIX DEFINITIVO
    =============================== */
 
 #cookiewx-banner .cwx-powered-wrap{
+  position: absolute;
+  right: 20px;
+  bottom: 16px;
+
   display: flex;
   align-items: center;
   gap: 8px;
+
   font-size: 13px;
   color: #666;
+  pointer-events: auto;
 }
 
 /* testo */
@@ -267,20 +273,11 @@ function kickReload() {
   white-space: nowrap;
 }
 
-/* LOGO – DESKTOP (doppio grande) */
+/* LOGO – DESKTOP */
 #cookiewx-banner .cwx-powered-link img{
-  height: 32px;
+  height: 64px;          /* 🔥 GRANDE SU DESKTOP */
   width: auto;
   display: block;
-  transform: scale(2) !important;   /* ⬅️ FORZA DESKTOP */
-  transform-origin: left center;
-}
-
-/* desktop: un po’ di respiro */
-@media (min-width: 769px){
-  #cookiewx-banner .cwx-powered-wrap{
-    margin-left: 16px;
-  }
 }
 
 /* ===============================
@@ -289,16 +286,17 @@ function kickReload() {
 @media (max-width: 768px){
 
   #cookiewx-banner .cwx-powered-wrap{
+    position: static;
     width: 100%;
     justify-content: center;
     margin-top: 12px;
   }
 
   #cookiewx-banner .cwx-powered-link img{
-    height: 48px;   /* ⬅️ mobile più piccolo ma leggibile */
+    height: 48px;        /* 🔽 più piccolo su mobile */
   }
 
-  /* layout mobile generale (già corretto) */
+  /* layout mobile generale */
   #cookiewx-banner > div > div{
     width:100%;
   }
