@@ -256,7 +256,7 @@ function kickReload() {
   }
 
 /* ===============================
-   Powered by CookieWX – DEFINITIVO
+   Powered by CookieWX – FIX REALE
    =============================== */
 
 #cookiewx-banner .cwx-powered-wrap{
@@ -270,13 +270,17 @@ function kickReload() {
 /* testo */
 #cookiewx-banner .cwx-powered-text{
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
-/* LOGO – DESKTOP */
+/* LOGO – BASE */
 #cookiewx-banner .cwx-powered-logo{
-  height: 64px;          /* ✅ grande davvero */
+  height: 64px;          /* desktop */
   width: auto;
   display: block;
+
+  flex-shrink: 0;        /* 🔥 QUESTO È IL FIX */
+  max-height: none;      /* 🔥 evita clamp Wix */
 }
 
 /* ===============================
@@ -290,7 +294,8 @@ function kickReload() {
   }
 
   #cookiewx-banner .cwx-powered-logo{
-    height: 48px;        /* ✅ mobile corretto */
+    height: 48px;        /* mobile */
+    flex-shrink: 0;      /* 🔥 fondamentale */
   }
 
   #cookiewx-banner > div > div{
