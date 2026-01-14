@@ -266,6 +266,13 @@ function kickReload() {
     display: block;
   }
 
+  /* 🔧 FORCE SIZE logo CookieWX (anche se Wix tocca inline) */
+#cookiewx-banner img[alt="Powered by CookieWX"]{
+  height: 38px !important;
+  width: auto !important;
+  max-height: none !important;
+}
+
     /* Mobile */
     @media (max-width: 768px){
       #cookiewx-banner > div > div{
