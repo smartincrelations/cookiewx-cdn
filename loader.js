@@ -192,9 +192,15 @@ function kickReload() {
      rel="noopener"
      class="cwx-powered-link">
     <img
-      src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
-      alt="CookieWX"
-    >
+  src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
+  alt="CookieWX"
+  style="
+    height:32px;
+    transform:scale(2);
+    transform-origin:left center;
+    display:block;
+  "
+>
   </a>
 </div>
   </div>
@@ -273,9 +279,11 @@ function kickReload() {
 
 /* LOGO – DESKTOP (doppio grande) */
 #cookiewx-banner .cwx-powered-link img{
-  height: 64px;      /* ⬅️ QUI è il “doppio” */
+  height: 32px;
   width: auto;
   display: block;
+  transform: scale(2) !important;   /* ⬅️ FORZA DESKTOP */
+  transform-origin: left center;
 }
 
 /* desktop: un po’ di respiro */
