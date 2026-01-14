@@ -162,7 +162,7 @@ function kickReload() {
   box-shadow:0 -4px 12px rgba(0,0,0,.15);
   font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
 ">
-  <div style="max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;position:relative;">
+  <div style="max-width:1200px;margin:0 auto;padding:20px;display:flex;flex-wrap:wrap;gap:20px;align-items:center;justify-content:space-between;">
     <div style="flex:1;min-width:260px;">
       <div style="
   font-size:18px;
@@ -185,12 +185,16 @@ function kickReload() {
       <button data-cwx="reject">Rifiuta tutto</button>
       <button data-cwx="prefs">Gestisci preferenze</button>
     </div>
-  <div class="cwx-powered-wrap">
+   <div class="cwx-powered-wrap">
   <span class="cwx-powered-text">Powered by</span>
-  <a href="https://www.cookiewx.com" target="_blank" rel="noopener" class="cwx-powered-link">
+  <a href="https://www.cookiewx.com"
+     target="_blank"
+     rel="noopener"
+     class="cwx-powered-link">
     <img
-  src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
-  alt="CookieWX">
+      src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
+      alt="CookieWX"
+    >
   </a>
 </div>
   </div>
@@ -250,8 +254,8 @@ function kickReload() {
     box-shadow: 0 6px 16px rgba(0,64,128,.18);
   }
 
-/* ===============================
-   Powered by CookieWX – STABILE
+  /* ===============================
+   Powered by CookieWX (SAFE)
    =============================== */
 
 #cookiewx-banner .cwx-powered-wrap{
@@ -260,10 +264,44 @@ function kickReload() {
   gap: 8px;
   font-size: 13px;
   color: #666;
-  margin-left: 16px;
+}
 
-  transform: scale(2);
-  transform-origin: right center;
+#cookiewx-banner .cwx-powered-text{
+  white-space: nowrap;
+}
+
+#cookiewx-banner .cwx-powered-link img{
+  height: 50px;
+  width: auto;
+  display: block;
+}
+  
+/* Mobile */
+@media (max-width: 768px){
+  #cookiewx-banner > div > div{
+    width:100%;
+  }
+  #cookiewx-banner button{
+    width:100%;
+    text-align:center;
+  }
+
+  /* Mobile: Powered by centrato */
+#cookiewx-banner .cwx-powered-wrap{
+  justify-content: center;
+  width: 100%;
+}
+}
+/* ===============================
+   Powered by CookieWX (UNICA FONTE)
+   =============================== */
+
+#cookiewx-banner .cwx-powered-wrap{
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #666;
 }
 
 /* testo */
@@ -271,11 +309,18 @@ function kickReload() {
   white-space: nowrap;
 }
 
-/* LOGO – DESKTOP */
+/* logo – DESKTOP */
 #cookiewx-banner .cwx-powered-link img{
-  height: 32px;
+  height: 64px;          /* ← grande come volevi (ex scale 2) */
   width: auto;
   display: block;
+}
+
+/* desktop: un po’ di respiro */
+@media (min-width: 769px){
+  #cookiewx-banner .cwx-powered-wrap{
+    margin-left: 16px;
+  }
 }
 
 /* ===============================
@@ -287,25 +332,10 @@ function kickReload() {
     width: 100%;
     justify-content: center;
     margin-top: 12px;
-
-    transform: scale(1.4);       /* ⬅️ controllo mobile */
-    transform-origin: center;
   }
 
-  /* img resta neutra */
   #cookiewx-banner .cwx-powered-link img{
-    height: 32px;
-    width: auto;
-    display: block;
-  }
-
-  #cookiewx-banner > div > div{
-    width:100%;
-  }
-
-  #cookiewx-banner button{
-    width:100%;
-    text-align:center;
+    height: 48px;        /* leggermente ridotto su mobile */
   }
 }
   `;
@@ -339,7 +369,6 @@ function showBanner() {
 
     bindBannerEvents();
     bindPolicyLink();
-
   }
 
   mount();
