@@ -187,24 +187,17 @@ function kickReload() {
       <button data-cwx="reject">Rifiuta tutto</button>
       <button data-cwx="prefs">Gestisci preferenze</button>
     </div>
-    <div style="
-  margin-top:12px;
-  display:flex;
-  align-items:center;
-  gap:8px;
-  font-size:12px;
-  color:#666;
-">
+    <div id="cwx-poweredby">
+  <span>Powered by</span>
   <a href="https://www.cookiewx.com"
-   target="_blank"
-   rel="noopener"
-   style="display:flex;align-items:center;gap:6px;text-decoration:none;">
-  <img
-    src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
-    alt="Powered by CookieWX"
-    style="height:22px;width:auto;"
-  >
-</a>
+     target="_blank"
+     rel="noopener"
+     aria-label="CookieWX">
+    <img
+      src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png"
+      alt="CookieWX"
+    >
+  </a>
 </div>
   </div>
 </div>
@@ -254,7 +247,24 @@ function kickReload() {
   box-shadow: 0 6px 16px rgba(0,0,0,.18);
 }
 
-    
+   /* ===============================
+   Powered by CookieWX
+   =============================== */
+#cwx-poweredby{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  white-space:nowrap;
+  margin-left:12px;
+  font-size:12px;
+  color:#666;
+}
+
+#cwx-poweredby img{
+  height:28px;          /* ⬅️ QUI RISOLVIAMO IL PROBLEMA */
+  width:auto;
+  display:block;
+} 
 
     /* Mobile */
     @media (max-width: 768px){
