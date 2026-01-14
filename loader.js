@@ -287,6 +287,11 @@ function kickReload() {
   document.head.appendChild(style);
 })();
 function showBanner() {
+  try {
+  var img = banner.querySelector('img[alt="Powered by CookieWX"]');
+  console.log("CWX LOGO height inline:", img && img.getAttribute("style"));
+  console.log("CWX LOGO computed height:", img && getComputedStyle(img).height);
+} catch(e){}
   hideBadge(); // opzionale UX
   if (document.getElementById("cookiewx-banner")) return;
 
