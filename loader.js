@@ -273,10 +273,10 @@ function kickReload() {
 
 /* LOGO – DESKTOP (doppio grande) */
 #cookiewx-banner .cwx-powered-link img{
-  height: 32px;              /* base */
+  height: 32px;
   width: auto;
   display: block;
-  transform: scale(2);      /* ⬅️ RADDOPPIO VISIVO */
+  transform: scale(2) !important;   /* ⬅️ FORZA DESKTOP */
   transform-origin: left center;
 }
 
