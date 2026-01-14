@@ -222,6 +222,9 @@ function kickReload() {
       opacity:1;
       transform: translateY(0);
     }
+    #cookiewx-banner img[alt="Powered by CookieWX"]{
+  transform: scale(2);
+}
 
     /* BOTTONI */
     #cookiewx-banner button{
