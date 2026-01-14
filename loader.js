@@ -246,14 +246,20 @@ function kickReload() {
   box-shadow: 0 6px 16px rgba(0,0,0,.18);
 }
 
-    /* Preferenze */
-    #cookiewx-banner button[data-cwx="prefs"]{
-      background: transparent;
-      color:#111;
-      text-decoration: underline;
-      padding-left: 6px;
-      padding-right: 6px;
-    }
+    /* Accetta + Rifiuta (stessa evidenza – COMPLIANCE) */
+#cookiewx-banner button[data-cwx="accept"],
+#cookiewx-banner button[data-cwx="reject"]{
+  background:#000;
+  color:#fff;
+  box-shadow: 0 6px 16px rgba(0,0,0,.18);
+}
+
+/* Gestisci preferenze – stesso peso, colore diverso */
+#cookiewx-banner button[data-cwx="prefs"]{
+  background:#f2f2f2;
+  color:#000;
+  box-shadow: 0 6px 16px rgba(0,0,0,.12);
+}
 
     /* Mobile */
     @media (max-width: 768px){
