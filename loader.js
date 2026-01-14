@@ -192,21 +192,25 @@ var CWX_BANNER_HTML = `
   style.id = "cwx-banner-style";
   style.textContent = `
 #cookiewx-banner{
-  position:fixed;
-  bottom:0;
-  left:0;
-  right:0;
+  position:fixed !important;
+  bottom:0 !important;
+  left:0 !important;
+  right:0 !important;
+
+  width:100vw !important;
+  max-width:100vw !important;
+
   background:#fff;
   box-shadow:0 -4px 12px rgba(0,0,0,.15);
-  z-index:2147483647;
-  font-family:system-ui,-apple-system,BlinkMacSystemFont,sans-serif;
-  opacity:0;
-  transform:translateY(100%);
-  transition:opacity .35s ease, transform .35s ease;
-}
-#cookiewx-banner.cwx-show{
-  opacity:1;
-  transform:translateY(0);
+
+  z-index:2147483647 !important;
+
+  opacity:1 !important;
+  transform:none !important;
+
+  pointer-events:auto !important;
+
+  isolation:isolate; /* 🔥 fondamentale su Wix */
 }
 
 .cwx-container{
@@ -294,9 +298,10 @@ function showBanner() {
   var banner = wrap.firstElementChild;
   document.body.appendChild(banner);
 
-  requestAnimationFrame(function () {
-    banner.classList.add("cwx-show");
-  });
+  // forza layout
+banner.style.display = "block";
+banner.style.opacity = "1";
+banner.style.transform = "none";
 
   bindBannerEvents();
   bindPolicyLink();
