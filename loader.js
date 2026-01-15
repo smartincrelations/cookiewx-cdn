@@ -784,7 +784,9 @@ var CWX_BADGE_ID = "cookiewx-badge";
 
 // ---------- HTML ----------
 var CWX_BADGE_HTML =
-  '<div id="' + CWX_BADGE_ID + '" class="cwx-badge">🍪</div>';
+  '<div id="' + CWX_BADGE_ID + '" class="cwx-badge">' +
+    '<img src="https://static.wixstatic.com/media/cf36e3_3b2d9da65112455c818a4e1916ddbc80~mv2.png" alt="Cookie preferences">' +
+  '</div>';
 
   (function injectBadgeStyle() {
   if (document.getElementById("cwx-badge-style")) return;
@@ -813,6 +815,16 @@ var CWX_BADGE_HTML =
     opacity .25s ease;
 
   will-change: transform;
+}
+
+.cwx-badge img {
+  width: 36px;
+  height: 36px;
+  display: block;
+
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
 }
 
 .cwx-badge.cwx-open {
