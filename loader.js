@@ -827,6 +827,35 @@ var CWX_BADGE_HTML =
   box-shadow: none !important;
 }
 
+.cwx-badge {
+  -webkit-tap-highlight-color: transparent;
+  tap-highlight-color: transparent;
+
+  user-select: none;
+  -webkit-user-select: none;
+
+  outline: none;
+}
+
+.cwx-badge:focus,
+.cwx-badge:active {
+  outline: none;
+  background: transparent;
+}
+
+.cwx-badge img {
+  display: block;
+  background: transparent !important;
+
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  pointer-events: none;
+}
+
+.cwx-badge {
+  touch-action: manipulation;
+}
+
 .cwx-badge.cwx-open {
   transform: translateX(8px);
   opacity: .85;
