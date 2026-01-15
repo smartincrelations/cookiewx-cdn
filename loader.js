@@ -785,7 +785,7 @@ var CWX_BADGE_ID = "cookiewx-badge";
 // ---------- HTML ----------
 var CWX_BADGE_HTML =
   '<div id="' + CWX_BADGE_ID + '" class="cwx-badge">' +
-    '<img src="https://static.wixstatic.com/media/cf36e3_3b2d9da65112455c818a4e1916ddbc80~mv2.png" alt="Cookie preferences">' +
+    '<img src="https://static.wixstatic.com/media/cf36e3_f2adf1efe1ce41079b157e69160ee495~mv2.png" alt="Cookie preferences">' +
   '</div>';
 
   (function injectBadgeStyle() {
@@ -908,6 +908,9 @@ function showBadge() {
     bindBadgeEvents();
   }
 
+  // ✅ ORA el esiste
+  el.style.display = "block";
+
   // default: badge chiuso
   el.classList.remove("cwx-open");
   updateBadgeState();
@@ -915,16 +918,11 @@ function showBadge() {
 
 // ---------- HIDE ----------
 function hideBadge() {
-  if (!document.body) return;
-
   var el = document.getElementById(CWX_BADGE_ID);
   if (!el) return;
 
-  el.classList.remove("cwx-show");
-
-  setTimeout(function () {
-    if (el && el.parentNode) el.remove();
-  }, 350);
+  el.classList.remove("cwx-open");
+  el.style.display = "none";
 }
 
 // ---------- EVENTS ----------
@@ -1466,7 +1464,7 @@ releaseBlocked();
 if (c) {
   applyConsent(c);
   hideBanner();
-
+  restoreFavicons();
   showBadge();
 
   // ✅ NON toccare favicon se c’è consenso
@@ -1474,8 +1472,8 @@ if (c) {
   window.CookieWX.consent = { funzionali: false, statistici: false, marketing: false };
   log("ℹ️ CookieWX: nessun consenso, mostro banner.");
 
+  hideBadge();        // 🔥 IMPORTANTE
   showBanner();
-  showBadge();
 
   injectCookieWXFavicon();
   setTimeout(injectCookieWXFavicon, 300);
