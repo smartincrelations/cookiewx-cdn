@@ -794,7 +794,7 @@ var CWX_BADGE_HTML =
   style.textContent = `
 .cwx-badge {
   position: fixed;
-  bottom: 20px;
+  bottom: 72px;
   left: 20px;
 
   font-size: 22px;              /* 🔽 più piccolo */
