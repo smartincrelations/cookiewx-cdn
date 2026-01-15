@@ -316,7 +316,7 @@ function showBanner() {
   console.log("CWX LOGO height inline:", img && img.getAttribute("style"));
   console.log("CWX LOGO computed height:", img && getComputedStyle(img).height);
 } catch(e){}
-  hideBadge(); // opzionale UX
+ // hideBadge(); // opzionale UX
   if (document.getElementById("cookiewx-banner")) return;
 
   function mount() {
@@ -794,62 +794,48 @@ var CWX_BADGE_HTML =
   style.textContent = `
 .cwx-badge {
   position: fixed;
-  bottom: 50px;
-  left: 20px;
+  left: 0;
+  bottom: 72px;
 
-  font-size: 22px;              /* 🔽 più piccolo */
+  padding: 10px 14px;
+  font-size: 22px;
   cursor: pointer;
   z-index: 2147483647;
 
-  background: none;
-  box-shadow: none;
+  background: #fff;
+  border-radius: 0 16px 16px 0;
+  box-shadow: 0 8px 24px rgba(0,0,0,.18);
 
-  opacity: .45;                 /* 🔽 più trasparente */
-  transform: scale(.85) translateY(10px);
+  transform: translateX(-55%);
+  opacity: .6;
 
   transition:
-    opacity .25s ease,
-    transform .25s ease;
+    transform .45s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity .3s ease,
+    box-shadow .3s ease;
 }
 
-.cwx-badge.cwx-show {
-  opacity: .6;
-  transform: scale(.9) translateY(0);
-}
-/* Hover desktop / focus */
-.cwx-badge:hover,
-.cwx-badge:focus-visible {
+/* Stato visibile */
+.cwx-badge.cwx-open {
+  transform: translateX(12px);
   opacity: 1;
-  transform: scale(1);
 }
 
+/* Hover desktop */
+.cwx-badge:hover {
+  opacity: 1;
+  box-shadow: 0 12px 28px rgba(0,0,0,.25);
+}
+
+/* Micro pulse se non c’è consenso */
 .cwx-badge.cwx-pulse {
-  animation: cwx-pulse 2s infinite;
+  animation: cwx-pulse 2.2s infinite;
 }
 
 @keyframes cwx-pulse {
-  0%   { transform: scale(.9); }
-  50%  { transform: scale(1); }
-  100% { transform: scale(.9); }
-}
-@media (max-width: 768px) {
-  /* contenitore modale */
-  #cookiewx-preferences > div {
-    max-height: 85vh;              /* ⬅️ evita tagli */
-    overflow-y: auto;              /* ⬅️ scroll interno */
-    padding-bottom: 96px;          /* ⬅️ spazio per i bottoni */
-  }
-
-  /* footer bottoni sempre visibile */
-  #cookiewx-preferences > div > div:last-child {
-    position: sticky;
-    bottom: 0;
-    background: #fff;
-    padding-top: 12px;
-    padding-bottom: 12px;
-    margin-top: 16px;
-    z-index: 2;
-  }
+  0%   { transform: translateX(-55%) scale(1); }
+  50%  { transform: translateX(-55%) scale(1.08); }
+  100% { transform: translateX(-55%) scale(1); }
 }
 `;
   document.head.appendChild(style);
@@ -858,7 +844,7 @@ var CWX_BADGE_HTML =
 // ---------- SHOW ----------
 function showBadge() {
   if (!document.body) {
-    requestAnimationFrame(showBadge); // ⛑️ attende Wix
+    requestAnimationFrame(showBadge);
     return;
   }
 
@@ -868,15 +854,13 @@ function showBadge() {
     var wrap = document.createElement("div");
     wrap.innerHTML = CWX_BADGE_HTML;
     document.body.appendChild(wrap.firstElementChild);
-    bindBadgeEvents();
     el = document.getElementById(CWX_BADGE_ID);
+    bindBadgeEvents();
   }
 
-  requestAnimationFrame(function () {
-    if (!el) return;
-    el.classList.add("cwx-show");
-    updateBadgeState();
-  });
+  // default: badge chiuso
+  el.classList.remove("cwx-open");
+  updateBadgeState();
 }
 
 // ---------- HIDE ----------
@@ -898,10 +882,17 @@ function bindBadgeEvents() {
   var el = document.getElementById(CWX_BADGE_ID);
   if (!el) return;
 
-  el.onclick = function () {
-    hideBanner();
-    showPreferences();
-  };
+  el.addEventListener("click", function () {
+    var isOpen = el.classList.contains("cwx-open");
+
+    if (isOpen) {
+      el.classList.remove("cwx-open");
+    } else {
+      el.classList.add("cwx-open");
+      hideBanner();
+      showPreferences();
+    }
+  });
 }
 
 // ---------- STATE UPDATE ----------
