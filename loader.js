@@ -797,25 +797,31 @@ var CWX_BADGE_HTML =
   left: 0;
   bottom: 72px;
 
-  padding: 10px 14px;
-  font-size: 22px;
+  font-size: 24px;
   cursor: pointer;
   z-index: 2147483647;
 
-  background: #fff;
-  border-radius: 0 16px 16px 0;
-  box-shadow: 0 8px 24px rgba(0,0,0,.18);
+  background: none;
+  box-shadow: none;
 
-  /* stato iniziale */
-  transform: translateX(-60%);
-  opacity: .6;
+  /* stato idle: mezzo nascosto */
+  transform: translateX(-55%);
+  opacity: .5;
 
   transition:
     transform .45s cubic-bezier(0.22, 1, 0.36, 1),
-    opacity .3s ease,
-    box-shadow .3s ease;
+    opacity .25s ease;
 
   will-change: transform;
+}
+
+.cwx-badge.cwx-open {
+  transform: translateX(8px);
+  opacity: .85;
+}
+
+.cwx-badge:hover {
+  opacity: 1;
 }
 
 /* Stato visibile */
@@ -885,27 +891,24 @@ function bindBadgeEvents() {
   var el = document.getElementById(CWX_BADGE_ID);
   if (!el) return;
 
-el.addEventListener("click", function () {
-  var isOpen = el.classList.contains("cwx-open");
+  el.addEventListener("click", function () {
+    var isOpen = el.classList.contains("cwx-open");
 
-  if (isOpen) {
-    el.classList.remove("cwx-open");
-    return;
-  }
-
-  // 🔥 forza stato iniziale
-  el.classList.remove("cwx-open");
-
-  // 🔥 frame 1: layout settle
-  requestAnimationFrame(function () {
-    // 🔥 frame 2: animazione
-    requestAnimationFrame(function () {
+    if (!isOpen) {
+      // 👉 PRIMO TAP: solo animazione
       el.classList.add("cwx-open");
-      hideBanner();
-      showPreferences();
-    });
+      return;
+    }
+
+    // 👉 SECONDO TAP: apri preferenze
+    hideBanner();
+    showPreferences();
   });
-});
+
+  // 👉 chiudi se scrollo (UX iOS)
+  window.addEventListener("scroll", function () {
+    el.classList.remove("cwx-open");
+  });
 }
 
 // ---------- STATE UPDATE ----------
