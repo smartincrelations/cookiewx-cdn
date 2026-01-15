@@ -806,13 +806,16 @@ var CWX_BADGE_HTML =
   border-radius: 0 16px 16px 0;
   box-shadow: 0 8px 24px rgba(0,0,0,.18);
 
-  transform: translateX(-55%);
+  /* stato iniziale */
+  transform: translateX(-60%);
   opacity: .6;
 
   transition:
     transform .45s cubic-bezier(0.22, 1, 0.36, 1),
     opacity .3s ease,
     box-shadow .3s ease;
+
+  will-change: transform;
 }
 
 /* Stato visibile */
@@ -882,17 +885,27 @@ function bindBadgeEvents() {
   var el = document.getElementById(CWX_BADGE_ID);
   if (!el) return;
 
-  el.addEventListener("click", function () {
-    var isOpen = el.classList.contains("cwx-open");
+el.addEventListener("click", function () {
+  var isOpen = el.classList.contains("cwx-open");
 
-    if (isOpen) {
-      el.classList.remove("cwx-open");
-    } else {
+  if (isOpen) {
+    el.classList.remove("cwx-open");
+    return;
+  }
+
+  // 🔥 forza stato iniziale
+  el.classList.remove("cwx-open");
+
+  // 🔥 frame 1: layout settle
+  requestAnimationFrame(function () {
+    // 🔥 frame 2: animazione
+    requestAnimationFrame(function () {
       el.classList.add("cwx-open");
       hideBanner();
       showPreferences();
-    }
+    });
   });
+});
 }
 
 // ---------- STATE UPDATE ----------
