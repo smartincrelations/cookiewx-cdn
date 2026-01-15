@@ -887,6 +887,15 @@ var CWX_BADGE_HTML =
   50%  { transform: translateX(-55%) scale(1.08); }
   100% { transform: translateX(-55%) scale(1); }
 }
+
+/* ===============================
+   Desktop fix: badge più basso
+   =============================== */
+@media (min-width: 1024px) {
+  .cwx-badge {
+    bottom: 24px;   /* abbassato → il banner lo copre */
+  }
+}
 `;
   document.head.appendChild(style);
 })();
