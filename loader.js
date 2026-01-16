@@ -1091,7 +1091,10 @@ function readConsentFromStorage() {
   try {
     var originalCookie = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
 
-    if (!originalCookie || !originalCookie.set) return;
+    // 👉 FIX WIX: se non è ridefinibile, esci
+    if (!originalCookie || !originalCookie.set || originalCookie.configurable === false) {
+      return;
+    }
 
     Object.defineProperty(document, "cookie", {
       configurable: true,
