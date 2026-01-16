@@ -1089,10 +1089,18 @@ function readConsentFromStorage() {
   // ---------- COOKIE WRITE GUARD ----------
 (function guardDocumentCookie() {
   try {
+    // 🔒 GUARDIA GLOBALE – esegui UNA SOLA VOLTA
+    if (window.__COOKIEWX_COOKIE_GUARD__) return;
+    window.__COOKIEWX_COOKIE_GUARD__ = true;
+
     var originalCookie = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
 
-    // 👉 FIX WIX: se non è ridefinibile, esci
-    if (!originalCookie || !originalCookie.set || originalCookie.configurable === false) {
+    // ❌ ambienti non compatibili (Wix incluso)
+    if (
+      !originalCookie ||
+      !originalCookie.set ||
+      originalCookie.configurable === false
+    ) {
       return;
     }
 
@@ -1103,31 +1111,31 @@ function readConsentFromStorage() {
         return originalCookie.get.call(document);
       },
       set: function (value) {
-        // prova a capire categoria dal nome cookie
-        var name = String(value).split("=")[0].trim().toLowerCase();
+        try {
+          var name = String(value).split("=")[0].trim().toLowerCase();
 
-        // cookie essenziali sempre ammessi
-        if (
-          name.indexOf("session") !== -1 ||
-          name.indexOf("csrf") !== -1 ||
-          name.indexOf("wix") !== -1
-        ) {
+          // cookie essenziali sempre ammessi
+          if (
+            name.indexOf("session") !== -1 ||
+            name.indexOf("csrf") !== -1 ||
+            name.indexOf("wix") !== -1
+          ) {
+            originalCookie.set.call(document, value);
+            return;
+          }
+
+          var c = window.CookieWX && window.CookieWX.consent;
+          if (!c || (!c.statistici && !c.marketing)) {
+            log("🧱 CookieWX blocca COOKIE write:", value);
+            return;
+          }
+
           originalCookie.set.call(document, value);
-          return;
-        }
-
-        // se non ho consenso marketing/statistici → blocco
-        var c = window.CookieWX && window.CookieWX.consent;
-        if (!c || (!c.statistici && !c.marketing)) {
-          log("🧱 CookieWX blocca COOKIE write:", value);
-          return;
-        }
-
-        originalCookie.set.call(document, value);
+        } catch (_) {}
       }
     });
-  } catch (e) {
-    log("⚠️ CookieWX cookie guard error", e);
+  } catch (_) {
+    // ⚠️ MAI rompere il sito
   }
 })();
   
