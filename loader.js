@@ -12,6 +12,64 @@
   if (window.__COOKIEWX_LOADER__) return;
   window.__COOKIEWX_LOADER__ = true;
 
+  // =========================================================
+// CAP. 0.5 — EVENT GATE (CONSENT-FIRST, CHANNEL-BASED)
+// =========================================================
+(function () {
+  const g = globalThis;
+
+  // helper: verifica consenso marketing
+  function hasMarketingConsent() {
+    return !!(g.CookieWX && g.CookieWX.consent && g.CookieWX.consent.marketing);
+  }
+
+  // crea wrapper sicuro
+  function gate(fn, name) {
+    return function () {
+      if (!hasMarketingConsent()) {
+        console.warn(`CookieWX: evento bloccato (${name})`, arguments);
+        return;
+      }
+      return fn.apply(this, arguments);
+    };
+  }
+
+  // API di tracking note (best effort)
+  const KNOWN_APIS = [
+    "gtag",
+    "fbq",
+    "ttq",
+    "lintrk",
+    "clarity",
+    "dataLayer" // gestita sotto
+  ];
+
+  KNOWN_APIS.forEach(api => {
+    // dataLayer.push è un caso speciale
+    if (api === "dataLayer") {
+      g.dataLayer = g.dataLayer || [];
+      const originalPush = g.dataLayer.push.bind(g.dataLayer);
+
+      g.dataLayer.push = function () {
+        if (!hasMarketingConsent()) {
+          console.warn("CookieWX: dataLayer push bloccato", arguments);
+          return;
+        }
+        return originalPush.apply(this, arguments);
+      };
+      return;
+    }
+
+    // funzioni normali
+    if (typeof g[api] === "function") {
+      g[api] = gate(g[api], api);
+    } else {
+      // stub preventivo
+      g[api] = gate(function () {}, api);
+    }
+  });
+})();
+
 // CAP. 1 — CONFIG & COSTANTI
   var DEBUG = true;
 
