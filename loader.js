@@ -1088,6 +1088,31 @@ function updateBadgeState() {
     regole: { cookies: [], scripts: [], iframes: [] }
   };
 
+  // =========================================================
+// CAP. X — API UFFICIALE CookieWX.track()
+// =========================================================
+window.CookieWX.track = function (category, payload) {
+  try {
+    category = String(category || "").toLowerCase();
+
+    if (!hasConsentFor(category)) {
+      console.warn("CookieWX.track bloccato:", category, payload);
+      return;
+    }
+
+    // mapping base (estendibile)
+    if (category === "marketing" && typeof window.gtag === "function") {
+      window.gtag("event", payload.event, payload.params || {});
+    }
+
+    // future estensioni:
+    // fbq, ttq, ecc.
+
+  } catch (e) {
+    console.warn("CookieWX.track error", e);
+  }
+};
+
   function safeJsonParse(raw, fallback) {
     try { return JSON.parse(raw); } catch (_) { return fallback; }
   }
