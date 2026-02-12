@@ -93,6 +93,35 @@ function disableGoogleRuntime() {
   }
 }
 
+function hardDisableGoogle() {
+  try {
+
+    // 1️⃣ blocca gtag
+    if (typeof window.gtag === "function") {
+      window.gtag = function () {
+        console.warn("CookieWX: gtag bloccato (revoca consenso)");
+      };
+    }
+
+    // 2️⃣ svuota dataLayer
+    if (window.dataLayer && Array.isArray(window.dataLayer)) {
+      window.dataLayer.length = 0;
+    }
+
+    // 3️⃣ blocca Google Analytics global
+    if (window.ga) {
+      window.ga = function () {
+        console.warn("CookieWX: ga bloccato");
+      };
+    }
+
+    console.log("CookieWX: Google HARD disabled");
+
+  } catch (e) {
+    console.warn("CookieWX hard disable error", e);
+  }
+}
+
 // CAP. 0.1 — BOOT & SAFE GUARD
 (function () {
   if (window.__COOKIEWX_LOADER__) return;
@@ -1630,6 +1659,7 @@ try {
 // 🔥 Se statistici revocati → cancella cookie Google
 if (!window.CookieWX.consent.statistici) {
   deleteGoogleCookies();
+  hardDisableGoogle();
 }
     
       // 🔥 Se revoca statistici o marketing → elimina cookie Google
