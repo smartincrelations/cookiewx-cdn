@@ -7,7 +7,22 @@
  * - Usa categorie da DB quando disponibili
  * ========================================================= */
 
-// CAP. 0 — BOOT & SAFE GUARD
+// CAP. 0 
+
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+
+gtag('consent', 'default', {
+  ad_storage: 'denied',
+  analytics_storage: 'denied',
+  ad_user_data: 'denied',
+  ad_personalization: 'denied',
+  functionality_storage: 'denied',
+  personalization_storage: 'denied',
+  security_storage: 'granted'
+});
+
+// CAP. 0.1 — BOOT & SAFE GUARD
 (function () {
   if (window.__COOKIEWX_LOADER__) return;
   window.__COOKIEWX_LOADER__ = true;
@@ -36,13 +51,11 @@
 
   // API di tracking note (best effort)
   const KNOWN_APIS = [
-    "gtag",
-    "fbq",
-    "ttq",
-    "lintrk",
-    "clarity",
-    "dataLayer" // gestita sotto
-  ];
+  "fbq",
+  "ttq",
+  "lintrk",
+  "clarity"
+];
 
   KNOWN_APIS.forEach(api => {
     // dataLayer.push è un caso speciale
@@ -1527,6 +1540,16 @@ try {
     } catch (_) {}
   }
   function applyConsent(consentObj) {
+
+if (typeof gtag === "function") {
+  gtag('consent', 'update', {
+    ad_storage: window.CookieWX.consent.marketing ? 'granted' : 'denied',
+    analytics_storage: window.CookieWX.consent.statistici ? 'granted' : 'denied',
+    ad_user_data: window.CookieWX.consent.marketing ? 'granted' : 'denied',
+    ad_personalization: window.CookieWX.consent.marketing ? 'granted' : 'denied'
+  });
+}
+    
     if (!consentObj) return;
 
     window.CookieWX.consent = {
