@@ -42,29 +42,6 @@ detectGAFromScripts();
 setTimeout(detectGAFromScripts, 1000);
 setTimeout(detectGAFromScripts, 2500);
 
-// ==========================================
-// CookieWX – intercetta dinamicamente GA IDs
-// ==========================================
-window.__COOKIEWX_GA_IDS__ = [];
-
-var originalDataLayerPush = window.dataLayer.push.bind(window.dataLayer);
-
-window.dataLayer.push = function () {
-  try {
-    var args = arguments[0];
-
-    if (Array.isArray(args) && args[0] === "config" && typeof args[1] === "string") {
-      var id = args[1];
-
-      if (!window.__COOKIEWX_GA_IDS__.includes(id)) {
-        window.__COOKIEWX_GA_IDS__.push(id);
-        console.log("CookieWX: GA ID intercettato →", id);
-      }
-    }
-  } catch (e) {}
-
-  return originalDataLayerPush.apply(this, arguments);
-};
 
 // =========================================================
 // GOOGLE HARD PRE-BLOCK (ID dinamico)
@@ -72,7 +49,7 @@ window.dataLayer.push = function () {
 
 window.dataLayer = window.dataLayer || [];
 
-window.__COOKIEWX_GA_IDS__ = [];
+window.__COOKIEWX_GA_IDS__ = window.__COOKIEWX_GA_IDS__ || [];
 window.__COOKIEWX_GOOGLE_BLOCKED__ = true;
 
 // intercetta push su dataLayer
@@ -227,7 +204,7 @@ function disableGoogleRuntime() {
 function hardDisableGoogle() {
   try {
 
-    // 1️⃣ Disabilita dinamicamente TUTTI gli ID GA trovati
+    // 🔴 1️⃣ DISABILITA TUTTI GLI ID INTERCETTATI
     if (window.__COOKIEWX_GA_IDS__ && window.__COOKIEWX_GA_IDS__.length) {
       window.__COOKIEWX_GA_IDS__.forEach(function(id){
         window["ga-disable-" + id] = true;
@@ -235,24 +212,24 @@ function hardDisableGoogle() {
       });
     }
 
-    // 2️⃣ blocca gtag
-    if (typeof window.gtag === "function") {
-      window.gtag = function () {
-        console.warn("CookieWX: gtag bloccato (revoca consenso)");
-      };
-    }
+    // 🔴 2️⃣ blocca gtag
+    window.gtag = function () {
+      console.warn("CookieWX: gtag bloccato (revoca consenso)");
+    };
 
-    // 3️⃣ svuota dataLayer
+    // 🔴 3️⃣ svuota dataLayer
     if (window.dataLayer && Array.isArray(window.dataLayer)) {
       window.dataLayer.length = 0;
     }
 
-    // 4️⃣ blocca GA legacy
+    // 🔴 4️⃣ blocca GA legacy
     if (window.ga) {
       window.ga = function () {
         console.warn("CookieWX: ga bloccato");
       };
     }
+
+    window.__COOKIEWX_GOOGLE_BLOCKED__ = true;
 
     console.log("CookieWX: Google HARD disabled");
 
@@ -262,14 +239,6 @@ function hardDisableGoogle() {
 }
 
 function reEnableGoogle() {
-
-  // 🔓 Riabilita GA dinamicamente
-if (window.__COOKIEWX_GA_IDS__ && window.__COOKIEWX_GA_IDS__.length) {
-  window.__COOKIEWX_GA_IDS__.forEach(function(id){
-    window["ga-disable-" + id] = false;
-    console.log("CookieWX: GA riabilitato →", id);
-  });
-}
   
   try {
 window.__COOKIEWX_GOOGLE_BLOCKED__ = false;
@@ -1849,8 +1818,14 @@ try {
 
 // 🔻 Revoca
 if (!window.CookieWX.consent.statistici) {
+
   deleteGoogleCookies();
+
   hardDisableGoogle();
+
+  // 🔥 retry per Wix async load
+  setTimeout(hardDisableGoogle, 300);
+  setTimeout(hardDisableGoogle, 1000);
 }
 
 // 🔺 Riattiva
