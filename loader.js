@@ -43,9 +43,16 @@ function updateGoogleConsent(consent) {
 
 function deleteGoogleCookies() {
   try {
+
+    const hostname = location.hostname;
+    const domainParts = hostname.split(".");
+    const rootDomain = domainParts.slice(-2).join(".");
+
     const domains = [
-      location.hostname,
-      "." + location.hostname
+      hostname,
+      "." + hostname,
+      rootDomain,
+      "." + rootDomain
     ];
 
     const cookies = document.cookie.split(";");
@@ -60,14 +67,20 @@ function deleteGoogleCookies() {
         name.startsWith("_gat") ||
         name.startsWith("__utm")
       ) {
+
         domains.forEach(function(domain) {
-          document.cookie = name + "=; path=/; domain=" + domain + "; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-          document.cookie = name + "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+          document.cookie =
+            name + "=; path=/; domain=" + domain + "; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
         });
+
+        // anche senza domain
+        document.cookie =
+          name + "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
       }
     });
 
-    console.log("CookieWX: Google cookies removed (forced)");
+    console.log("CookieWX: Google cookies removed (root-aware)");
+
   } catch (e) {
     console.warn("CookieWX delete error", e);
   }
