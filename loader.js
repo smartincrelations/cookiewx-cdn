@@ -57,7 +57,8 @@ function deleteGoogleCookies() {
         name.startsWith("_ga") ||
         name.startsWith("_gid") ||
         name.startsWith("_gcl") ||
-        name.startsWith("_gat")
+        name.startsWith("_gat") ||
+        name.startsWith("__utm")
       ) {
         domains.forEach(function(domain) {
           document.cookie = name + "=; path=/; domain=" + domain + "; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
@@ -69,6 +70,26 @@ function deleteGoogleCookies() {
     console.log("CookieWX: Google cookies removed (forced)");
   } catch (e) {
     console.warn("CookieWX delete error", e);
+  }
+}
+
+function disableGoogleRuntime() {
+  try {
+    if (!window.dataLayer || !Array.isArray(window.dataLayer)) return;
+
+    window.dataLayer.forEach(function(item) {
+      if (item && item[0] === "config" && typeof item[1] === "string") {
+        var measurementId = item[1];
+        window["ga-disable-" + measurementId] = true;
+        console.log("CookieWX: GA disabled →", measurementId);
+      }
+    });
+
+    // svuota dataLayer per sicurezza
+    window.dataLayer.length = 0;
+
+  } catch (e) {
+    console.warn("CookieWX disable runtime error", e);
   }
 }
 
@@ -1612,9 +1633,10 @@ if (!window.CookieWX.consent.statistici) {
 }
     
       // 🔥 Se revoca statistici o marketing → elimina cookie Google
-  if (!window.CookieWX.consent.statistici || !window.CookieWX.consent.marketing) {
-    deleteGoogleCookies();
-  }
+  if (!window.CookieWX.consent.statistici) {
+  deleteGoogleCookies();
+  disableGoogleRuntime();
+}
 
   log("⚙️ CookieWX consenso applicato:", window.CookieWX.consent);
 
