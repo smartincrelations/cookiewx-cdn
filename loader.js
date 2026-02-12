@@ -15,6 +15,51 @@ window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 
 // =========================================================
+// GOOGLE HARD PRE-BLOCK (ID dinamico)
+// =========================================================
+
+window.dataLayer = window.dataLayer || [];
+
+window.__COOKIEWX_GA_IDS__ = [];
+window.__COOKIEWX_GOOGLE_BLOCKED__ = true;
+
+// intercetta push su dataLayer
+const originalPush = window.dataLayer.push.bind(window.dataLayer);
+
+window.dataLayer.push = function () {
+
+  const args = arguments[0];
+
+  // intercetta config GA4
+  if (Array.isArray(args) && args[0] === "config" && typeof args[1] === "string") {
+
+    const measurementId = args[1];
+
+    if (!window.__COOKIEWX_GA_IDS__.includes(measurementId)) {
+      window.__COOKIEWX_GA_IDS__.push(measurementId);
+      window["ga-disable-" + measurementId] = true;
+      console.warn("CookieWX: GA ID bloccato dinamicamente →", measurementId);
+    }
+
+    if (window.__COOKIEWX_GOOGLE_BLOCKED__) {
+      console.warn("CookieWX: config GA bloccato (pre-consent)");
+      return;
+    }
+  }
+
+  return originalPush.apply(this, arguments);
+};
+
+// blocca gtag finché non c’è consenso
+window.gtag = function () {
+  if (window.__COOKIEWX_GOOGLE_BLOCKED__) {
+    console.warn("CookieWX: gtag bloccato (pre-consent)");
+    return;
+  }
+  window.dataLayer.push(arguments);
+};
+
+// =========================================================
 // HARD RESET CONSENT (compatibile con Wix async load)
 // =========================================================
 
@@ -129,6 +174,14 @@ function disableGoogleRuntime() {
 
 function hardDisableGoogle() {
   try {
+    window.__COOKIEWX_GOOGLE_BLOCKED__ = true;
+
+if (window.__COOKIEWX_GA_IDS__) {
+  window.__COOKIEWX_GA_IDS__.forEach(function(id){
+    window["ga-disable-" + id] = true;
+    console.log("CookieWX: GA disabilitato →", id);
+  });
+}
 
     // 1️⃣ blocca gtag
     if (typeof window.gtag === "function") {
@@ -158,7 +211,15 @@ function hardDisableGoogle() {
 
 function reEnableGoogle() {
   try {
+window.__COOKIEWX_GOOGLE_BLOCKED__ = false;
 
+if (window.__COOKIEWX_GA_IDS__) {
+  window.__COOKIEWX_GA_IDS__.forEach(function(id){
+    window["ga-disable-" + id] = false;
+    console.log("CookieWX: GA riattivato →", id);
+  });
+}
+    
     window.dataLayer = window.dataLayer || [];
     window.gtag = function(){ dataLayer.push(arguments); };
 
