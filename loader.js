@@ -7,7 +7,9 @@
  * - Usa categorie da DB quando disponibili
  * ========================================================= */
 
-// CAP. 0 
+// =========================================================
+// CAP. 0 — GOOGLE CONSENT CORE
+// =========================================================
 
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
@@ -19,8 +21,23 @@ gtag('consent', 'default', {
   ad_personalization: 'denied',
   functionality_storage: 'denied',
   personalization_storage: 'denied',
-  security_storage: 'granted'
+  security_storage: 'granted',
+  wait_for_update: 500
 });
+
+// 🔥 AGGIUNGI QUI
+function updateGoogleConsent(consent) {
+  if (typeof gtag !== "function") return;
+
+  gtag('consent', 'update', {
+    ad_storage: consent.marketing ? 'granted' : 'denied',
+    analytics_storage: consent.statistici ? 'granted' : 'denied',
+    ad_user_data: consent.marketing ? 'granted' : 'denied',
+    ad_personalization: consent.marketing ? 'granted' : 'denied',
+    functionality_storage: consent.funzionali ? 'granted' : 'denied',
+    personalization_storage: consent.funzionali ? 'granted' : 'denied'
+  });
+}
 
 // CAP. 0.1 — BOOT & SAFE GUARD
 (function () {
@@ -1077,6 +1094,9 @@ function updateBadgeState() {
       "wixdns.net",
       "parastorage.com",
       "static.parastorage.com",
+      "googletagmanager.com",
+      "google-analytics.com",
+      "gstatic.com",
     ];
 
     return allow.some(function (d) {
@@ -1541,34 +1561,30 @@ try {
   }
   function applyConsent(consentObj) {
 
-if (typeof gtag === "function") {
-  gtag('consent', 'update', {
-    ad_storage: window.CookieWX.consent.marketing ? 'granted' : 'denied',
-    analytics_storage: window.CookieWX.consent.statistici ? 'granted' : 'denied',
-    ad_user_data: window.CookieWX.consent.marketing ? 'granted' : 'denied',
-    ad_personalization: window.CookieWX.consent.marketing ? 'granted' : 'denied'
-  });
-}
-    
-    if (!consentObj) return;
+  if (!consentObj) return;
 
-    window.CookieWX.consent = {
-      funzionali: !!consentObj.funzionali,
-      statistici: !!consentObj.statistici,
-      marketing:  !!consentObj.marketing
-    };
+  // 1️⃣ aggiorna stato interno
+  window.CookieWX.consent = {
+    funzionali: !!consentObj.funzionali,
+    statistici: !!consentObj.statistici,
+    marketing:  !!consentObj.marketing
+  };
 
-    log("⚙️ CookieWX consenso applicato:", window.CookieWX.consent);
-enforceIframeTeardown();
+  // 2️⃣ aggiorna Google (USANDO LA FUNZIONE)
+  updateGoogleConsent(window.CookieWX.consent);
 
-setTimeout(function () {
+  log("⚙️ CookieWX consenso applicato:", window.CookieWX.consent);
+
   enforceIframeTeardown();
-  resetCheckedFlags();
-  scanNow();
-}, 50);
 
-releaseBlocked();
-  }
+  setTimeout(function () {
+    enforceIframeTeardown();
+    resetCheckedFlags();
+    scanNow();
+  }, 50);
+
+  releaseBlocked();
+}
 
   function applyFromStorage() {
 
