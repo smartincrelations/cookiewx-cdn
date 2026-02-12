@@ -226,28 +226,28 @@ function disableGoogleRuntime() {
 
 function hardDisableGoogle() {
   try {
-    window.__COOKIEWX_GOOGLE_BLOCKED__ = true;
 
-if (window.__COOKIEWX_GA_IDS__) {
-  window.__COOKIEWX_GA_IDS__.forEach(function(id){
-    window["ga-disable-" + id] = true;
-    console.log("CookieWX: GA disabilitato →", id);
-  });
-}
+    // 1️⃣ Disabilita dinamicamente TUTTI gli ID GA trovati
+    if (window.__COOKIEWX_GA_IDS__ && window.__COOKIEWX_GA_IDS__.length) {
+      window.__COOKIEWX_GA_IDS__.forEach(function(id){
+        window["ga-disable-" + id] = true;
+        console.log("CookieWX: GA disable attivo →", id);
+      });
+    }
 
-    // 1️⃣ blocca gtag
+    // 2️⃣ blocca gtag
     if (typeof window.gtag === "function") {
       window.gtag = function () {
         console.warn("CookieWX: gtag bloccato (revoca consenso)");
       };
     }
 
-    // 2️⃣ svuota dataLayer
+    // 3️⃣ svuota dataLayer
     if (window.dataLayer && Array.isArray(window.dataLayer)) {
       window.dataLayer.length = 0;
     }
 
-    // 3️⃣ blocca Google Analytics global
+    // 4️⃣ blocca GA legacy
     if (window.ga) {
       window.ga = function () {
         console.warn("CookieWX: ga bloccato");
@@ -262,6 +262,15 @@ if (window.__COOKIEWX_GA_IDS__) {
 }
 
 function reEnableGoogle() {
+
+  // 🔓 Riabilita GA dinamicamente
+if (window.__COOKIEWX_GA_IDS__ && window.__COOKIEWX_GA_IDS__.length) {
+  window.__COOKIEWX_GA_IDS__.forEach(function(id){
+    window["ga-disable-" + id] = false;
+    console.log("CookieWX: GA riabilitato →", id);
+  });
+}
+  
   try {
 window.__COOKIEWX_GOOGLE_BLOCKED__ = false;
 
