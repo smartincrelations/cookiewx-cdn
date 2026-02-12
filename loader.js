@@ -138,44 +138,30 @@ function hardDisableGoogle() {
 function reEnableGoogle() {
   try {
 
-    // 1️⃣ rimuovi eventuali blocchi
+    // 🔓 rimuovi disable flags
     Object.keys(window).forEach(function(k) {
       if (k.startsWith("ga-disable-")) {
         window[k] = false;
       }
     });
 
-    // 2️⃣ trova eventuale script gtag già presente
-    var existing = document.querySelector('script[src*="googletagmanager.com/gtag/js"]');
-
-    if (existing) {
-      console.log("CookieWX: GA script already present");
-      return;
-    }
-
-    // 3️⃣ estrai measurement ID dal DOM
-    var scriptWithId = document.querySelector('script[src*="gtag/js?id="]');
-    if (!scriptWithId) {
-      console.warn("CookieWX: Measurement ID non trovato");
-      return;
-    }
-
-    var src = scriptWithId.src;
-    var idMatch = src.match(/id=([^&]+)/);
-    if (!idMatch) return;
-
-    var measurementId = idMatch[1];
-
-    // 4️⃣ reinietta script
-    var s = document.createElement("script");
-    s.async = true;
-    s.src = "https://www.googletagmanager.com/gtag/js?id=" + measurementId;
-    document.head.appendChild(s);
-
-    // 5️⃣ reinizializza gtag
+    // 🔁 ripristina gtag
     window.dataLayer = window.dataLayer || [];
     window.gtag = function(){ dataLayer.push(arguments); };
 
+    // 🔍 trova measurement ID dallo script già presente
+    var script = document.querySelector('script[src*="gtag/js?id="]');
+    if (!script) {
+      console.warn("CookieWX: script GA non trovato");
+      return;
+    }
+
+    var match = script.src.match(/id=([^&]+)/);
+    if (!match) return;
+
+    var measurementId = match[1];
+
+    // 🔄 reinizializza GA
     gtag("js", new Date());
     gtag("config", measurementId);
 
@@ -1720,19 +1706,13 @@ try {
   // 2️⃣ aggiorna Google (USANDO LA FUNZIONE)
   updateGoogleConsent(window.CookieWX.consent);
 
-// 🔥 Se statistici revocati → cancella cookie Google
+// 🔻 Revoca
 if (!window.CookieWX.consent.statistici) {
   deleteGoogleCookies();
   hardDisableGoogle();
 }
-    
-      // 🔥 Se revoca statistici o marketing → elimina cookie Google
-  if (!window.CookieWX.consent.statistici) {
-  deleteGoogleCookies();
-  disableGoogleRuntime();
-}
 
-    // 🔺 Riattiva
+// 🔺 Riattiva
 if (window.CookieWX.consent.statistici) {
   reEnableGoogle();
 }
