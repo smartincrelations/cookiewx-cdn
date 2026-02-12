@@ -15,26 +15,25 @@ window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 
 // =========================================================
-// HARD RESET CONSENT (compatibilità Wix Google Tag)
+// HARD RESET CONSENT (compatibile con Wix async load)
 // =========================================================
 
-function forceGoogleDenied() {
-  if (typeof gtag === "function") {
-    console.log("CookieWX: Forzo Google consent DENIED iniziale");
+window.dataLayer = window.dataLayer || [];
 
-    gtag('consent', 'update', {
-      ad_storage: 'denied',
-      analytics_storage: 'denied',
-      ad_user_data: 'denied',
-      ad_personalization: 'denied',
-      functionality_storage: 'denied',
-      personalization_storage: 'denied'
-    });
+console.log("CookieWX: Push DENIED iniziale nel dataLayer");
+
+window.dataLayer.push([
+  'consent',
+  'update',
+  {
+    ad_storage: 'denied',
+    analytics_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    functionality_storage: 'denied',
+    personalization_storage: 'denied'
   }
-}
-
-// Esegui subito
-forceGoogleDenied();
+]);
 
 gtag('consent', 'default', {
   ad_storage: 'denied',
