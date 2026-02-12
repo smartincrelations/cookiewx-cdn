@@ -14,6 +14,30 @@
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 
+// ==========================================
+// CookieWX – intercetta dinamicamente GA IDs
+// ==========================================
+window.__COOKIEWX_GA_IDS__ = [];
+
+var originalDataLayerPush = window.dataLayer.push.bind(window.dataLayer);
+
+window.dataLayer.push = function () {
+  try {
+    var args = arguments[0];
+
+    if (Array.isArray(args) && args[0] === "config" && typeof args[1] === "string") {
+      var id = args[1];
+
+      if (!window.__COOKIEWX_GA_IDS__.includes(id)) {
+        window.__COOKIEWX_GA_IDS__.push(id);
+        console.log("CookieWX: GA ID intercettato →", id);
+      }
+    }
+  } catch (e) {}
+
+  return originalDataLayerPush.apply(this, arguments);
+};
+
 // =========================================================
 // GOOGLE HARD PRE-BLOCK (ID dinamico)
 // =========================================================
