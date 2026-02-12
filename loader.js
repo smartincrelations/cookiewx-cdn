@@ -135,6 +135,57 @@ function hardDisableGoogle() {
   }
 }
 
+function reEnableGoogle() {
+  try {
+
+    // 1️⃣ rimuovi eventuali blocchi
+    Object.keys(window).forEach(function(k) {
+      if (k.startsWith("ga-disable-")) {
+        window[k] = false;
+      }
+    });
+
+    // 2️⃣ trova eventuale script gtag già presente
+    var existing = document.querySelector('script[src*="googletagmanager.com/gtag/js"]');
+
+    if (existing) {
+      console.log("CookieWX: GA script already present");
+      return;
+    }
+
+    // 3️⃣ estrai measurement ID dal DOM
+    var scriptWithId = document.querySelector('script[src*="gtag/js?id="]');
+    if (!scriptWithId) {
+      console.warn("CookieWX: Measurement ID non trovato");
+      return;
+    }
+
+    var src = scriptWithId.src;
+    var idMatch = src.match(/id=([^&]+)/);
+    if (!idMatch) return;
+
+    var measurementId = idMatch[1];
+
+    // 4️⃣ reinietta script
+    var s = document.createElement("script");
+    s.async = true;
+    s.src = "https://www.googletagmanager.com/gtag/js?id=" + measurementId;
+    document.head.appendChild(s);
+
+    // 5️⃣ reinizializza gtag
+    window.dataLayer = window.dataLayer || [];
+    window.gtag = function(){ dataLayer.push(arguments); };
+
+    gtag("js", new Date());
+    gtag("config", measurementId);
+
+    console.log("CookieWX: GA riattivato →", measurementId);
+
+  } catch (e) {
+    console.warn("CookieWX re-enable error", e);
+  }
+}
+
 // CAP. 0.1 — BOOT & SAFE GUARD
 (function () {
   if (window.__COOKIEWX_LOADER__) return;
@@ -1679,6 +1730,11 @@ if (!window.CookieWX.consent.statistici) {
   if (!window.CookieWX.consent.statistici) {
   deleteGoogleCookies();
   disableGoogleRuntime();
+}
+
+    // 🔺 Riattiva
+if (window.CookieWX.consent.statistici) {
+  reEnableGoogle();
 }
 
   log("⚙️ CookieWX consenso applicato:", window.CookieWX.consent);
