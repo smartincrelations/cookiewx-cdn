@@ -15,6 +15,34 @@ window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 
 // ==========================================
+// CookieWX – intercetta GA ID da script src
+// ==========================================
+window.__COOKIEWX_GA_IDS__ = window.__COOKIEWX_GA_IDS__ || [];
+
+function detectGAFromScripts() {
+  try {
+    document.querySelectorAll('script[src*="gtag/js?id="]').forEach(function (s) {
+      var match = s.src.match(/id=([^&]+)/);
+      if (!match) return;
+
+      var id = match[1];
+
+      if (!window.__COOKIEWX_GA_IDS__.includes(id)) {
+        window.__COOKIEWX_GA_IDS__.push(id);
+        console.log("CookieWX: GA ID trovato da script →", id);
+      }
+    });
+  } catch (e) {}
+}
+
+// esegui subito
+detectGAFromScripts();
+
+// riesegui dopo mount Wix
+setTimeout(detectGAFromScripts, 1000);
+setTimeout(detectGAFromScripts, 2500);
+
+// ==========================================
 // CookieWX – intercetta dinamicamente GA IDs
 // ==========================================
 window.__COOKIEWX_GA_IDS__ = [];
