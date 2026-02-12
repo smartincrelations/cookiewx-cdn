@@ -1606,6 +1606,12 @@ try {
 
   // 2️⃣ aggiorna Google (USANDO LA FUNZIONE)
   updateGoogleConsent(window.CookieWX.consent);
+
+// 🔥 Se statistici revocati → cancella cookie Google
+if (!window.CookieWX.consent.statistici) {
+  deleteGoogleCookies();
+}
+    
       // 🔥 Se revoca statistici o marketing → elimina cookie Google
   if (!window.CookieWX.consent.statistici || !window.CookieWX.consent.marketing) {
     deleteGoogleCookies();
