@@ -138,18 +138,9 @@ function hardDisableGoogle() {
 function reEnableGoogle() {
   try {
 
-    // 🔓 rimuovi disable flags
-    Object.keys(window).forEach(function(k) {
-      if (k.startsWith("ga-disable-")) {
-        window[k] = false;
-      }
-    });
-
-    // 🔁 ripristina gtag
     window.dataLayer = window.dataLayer || [];
     window.gtag = function(){ dataLayer.push(arguments); };
 
-    // 🔍 trova measurement ID dallo script già presente
     var script = document.querySelector('script[src*="gtag/js?id="]');
     if (!script) {
       console.warn("CookieWX: script GA non trovato");
@@ -161,11 +152,18 @@ function reEnableGoogle() {
 
     var measurementId = match[1];
 
-    // 🔄 reinizializza GA
-    gtag("js", new Date());
+    // 1️⃣ aggiorna consent prima
+    gtag('consent', 'update', {
+      analytics_storage: 'granted'
+    });
+
+    // 2️⃣ reinvia config
     gtag("config", measurementId);
 
-    console.log("CookieWX: GA riattivato →", measurementId);
+    // 3️⃣ FORZA EVENT (QUESTO È IL FIX VERO)
+    gtag("event", "page_view");
+
+    console.log("CookieWX: GA riattivato correttamente →", measurementId);
 
   } catch (e) {
     console.warn("CookieWX re-enable error", e);
