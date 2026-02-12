@@ -14,6 +14,28 @@
 window.dataLayer = window.dataLayer || [];
 function gtag(){dataLayer.push(arguments);}
 
+// =========================================================
+// HARD RESET CONSENT (compatibilità Wix Google Tag)
+// =========================================================
+
+function forceGoogleDenied() {
+  if (typeof gtag === "function") {
+    console.log("CookieWX: Forzo Google consent DENIED iniziale");
+
+    gtag('consent', 'update', {
+      ad_storage: 'denied',
+      analytics_storage: 'denied',
+      ad_user_data: 'denied',
+      ad_personalization: 'denied',
+      functionality_storage: 'denied',
+      personalization_storage: 'denied'
+    });
+  }
+}
+
+// Esegui subito
+forceGoogleDenied();
+
 gtag('consent', 'default', {
   ad_storage: 'denied',
   analytics_storage: 'denied',
