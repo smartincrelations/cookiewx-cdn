@@ -43,15 +43,15 @@ function updateGoogleConsent(consent) {
 
 function deleteGoogleCookies() {
   try {
-    const domainVariants = [
+    const domains = [
       location.hostname,
       "." + location.hostname
     ];
 
     const cookies = document.cookie.split(";");
 
-    cookies.forEach(function (c) {
-      const name = c.split("=")[0].trim();
+    cookies.forEach(function(cookie) {
+      const name = cookie.split("=")[0].trim();
 
       if (
         name.startsWith("_ga") ||
@@ -59,17 +59,16 @@ function deleteGoogleCookies() {
         name.startsWith("_gcl") ||
         name.startsWith("_gat")
       ) {
-        domainVariants.forEach(function (d) {
-          document.cookie = name + "=; Max-Age=0; path=/; domain=" + d;
+        domains.forEach(function(domain) {
+          document.cookie = name + "=; path=/; domain=" + domain + "; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+          document.cookie = name + "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
         });
-
-        document.cookie = name + "=; Max-Age=0; path=/;";
       }
     });
 
-    console.log("CookieWX: Google cookies removed");
+    console.log("CookieWX: Google cookies removed (forced)");
   } catch (e) {
-    console.warn("CookieWX: deleteGoogleCookies error", e);
+    console.warn("CookieWX delete error", e);
   }
 }
 
