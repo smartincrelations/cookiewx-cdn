@@ -25,6 +25,8 @@ gtag('consent', 'default', {
   wait_for_update: 500
 });
 
+
+
 // 🔥 AGGIUNGI QUI
 function updateGoogleConsent(consent) {
   if (typeof gtag !== "function") return;
@@ -37,6 +39,38 @@ function updateGoogleConsent(consent) {
     functionality_storage: consent.funzionali ? 'granted' : 'denied',
     personalization_storage: consent.funzionali ? 'granted' : 'denied'
   });
+}
+
+function deleteGoogleCookies() {
+  try {
+    const domainVariants = [
+      location.hostname,
+      "." + location.hostname
+    ];
+
+    const cookies = document.cookie.split(";");
+
+    cookies.forEach(function (c) {
+      const name = c.split("=")[0].trim();
+
+      if (
+        name.startsWith("_ga") ||
+        name.startsWith("_gid") ||
+        name.startsWith("_gcl") ||
+        name.startsWith("_gat")
+      ) {
+        domainVariants.forEach(function (d) {
+          document.cookie = name + "=; Max-Age=0; path=/; domain=" + d;
+        });
+
+        document.cookie = name + "=; Max-Age=0; path=/;";
+      }
+    });
+
+    console.log("CookieWX: Google cookies removed");
+  } catch (e) {
+    console.warn("CookieWX: deleteGoogleCookies error", e);
+  }
 }
 
 // CAP. 0.1 — BOOT & SAFE GUARD
@@ -1572,6 +1606,10 @@ try {
 
   // 2️⃣ aggiorna Google (USANDO LA FUNZIONE)
   updateGoogleConsent(window.CookieWX.consent);
+      // 🔥 Se revoca statistici o marketing → elimina cookie Google
+  if (!window.CookieWX.consent.statistici || !window.CookieWX.consent.marketing) {
+    deleteGoogleCookies();
+  }
 
   log("⚙️ CookieWX consenso applicato:", window.CookieWX.consent);
 
