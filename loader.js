@@ -181,6 +181,26 @@ function deleteGoogleCookies() {
   }
 }
 
+function deleteCookiesByCategory(category) {
+  try {
+    var cookies = document.cookie.split(";");
+
+    cookies.forEach(function(cookie) {
+      var name = cookie.split("=")[0].trim();
+      var cat = getCategoryForCookie(name);
+
+      if (cat === category) {
+        document.cookie =
+          name + "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+      }
+    });
+
+    console.log("CookieWX: eliminati cookie categoria →", category);
+  } catch (e) {
+    console.warn("CookieWX delete category error", e);
+  }
+}
+
 function disableGoogleRuntime() {
   try {
     if (!window.dataLayer || !Array.isArray(window.dataLayer)) return;
@@ -1483,10 +1503,11 @@ function readConsentFromStorage() {
             return;
           }
 
-          var c = window.CookieWX && window.CookieWX.consent;
-          if (!c || (!c.statistici && !c.marketing)) {
-            log("🧱 CookieWX blocca COOKIE write:", value);
-            return;
+          var categoria = getCategoryForCookie(name);
+
+          if (!hasConsentFor(categoria)) {
+           log("🧱 CookieWX blocca COOKIE write:", name, categoria);
+          return;
           }
 
           originalCookie.set.call(document, value);
@@ -1533,6 +1554,57 @@ function hasConsentFor(category) {
   if (category === "statistici") return !!c.statistici;
   if (category === "marketing")  return !!c.marketing;
   return false;
+}
+
+  // =========================================================
+// COOKIE CATEGORY RESOLUTION
+// =========================================================
+
+function getCategoryForCookie(name) {
+  name = String(name || "").toLowerCase();
+
+  var list = (window.CookieWX.regole && window.CookieWX.regole.cookies) || [];
+
+  for (var i = 0; i < list.length; i++) {
+    var r = list[i];
+    if (!r || !r.name) continue;
+
+    if (name === String(r.name).toLowerCase()) {
+      return r.categoria || "funzionali";
+    }
+  }
+
+  return categorizeCookieFallback(name);
+}
+
+function categorizeCookieFallback(name) {
+  name = String(name || "").toLowerCase();
+
+  // Essenziali (Wix & sicurezza)
+  if (
+    name.indexOf("session") !== -1 ||
+    name.indexOf("csrf") !== -1 ||
+    name.indexOf("xsrf") !== -1 ||
+    name.indexOf("wix") !== -1 ||
+    name === "hs" ||
+    name === "ssr-caching"
+  ) return "essenziali";
+
+  // Google Analytics
+  if (
+    name.startsWith("_ga") ||
+    name.startsWith("_gid") ||
+    name.startsWith("_gat")
+  ) return "statistici";
+
+  // Marketing comuni
+  if (
+    name.startsWith("_fb") ||
+    name === "fr" ||
+    name.startsWith("_gcl")
+  ) return "marketing";
+
+  return "funzionali";
 }
 
   // ---------- FALLBACK CATEGORIZATION (se DB non matcha) ----------
@@ -1826,6 +1898,18 @@ if (!window.CookieWX.consent.statistici) {
   // 🔥 retry per Wix async load
   setTimeout(hardDisableGoogle, 300);
   setTimeout(hardDisableGoogle, 1000);
+}
+
+    if (!window.CookieWX.consent.statistici) {
+  deleteCookiesByCategory("statistici");
+}
+
+if (!window.CookieWX.consent.marketing) {
+  deleteCookiesByCategory("marketing");
+}
+
+if (!window.CookieWX.consent.funzionali) {
+  deleteCookiesByCategory("funzionali");
 }
 
 // 🔺 Riattiva
