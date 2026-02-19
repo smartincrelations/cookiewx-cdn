@@ -1570,8 +1570,8 @@ function getCategoryForCookie(name) {
     if (!r || !r.name) continue;
 
     if (name === String(r.name).toLowerCase()) {
-      return r.categoria || "funzionali";
-    }
+  return String(r.tipologia || r.categoria || "").toLowerCase() || "funzionali";
+}
   }
 
   return categorizeCookieFallback(name);
