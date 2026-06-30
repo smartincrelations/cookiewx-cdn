@@ -96,6 +96,41 @@
     try { console.warn.apply(console, arguments); } catch (_) {}
   }
 
+    var CWX_TELEMETRY = {
+    events: []
+  };
+
+  function recordTelemetry(event) {
+    try {
+      event = event || {};
+      event.timestamp = new Date().toISOString();
+      event.loaderVersion = VERSION;
+
+      CWX_TELEMETRY.events.push(event);
+
+      if (CWX_TELEMETRY.events.length > 300) {
+        CWX_TELEMETRY.events.shift();
+      }
+
+      window.postMessage({
+        type: "COOKIEWX_TELEMETRY_EVENT",
+        event: event
+      }, "*");
+    } catch (_) {}
+  }
+
+  function publishTelemetrySnapshot() {
+    try {
+      window.postMessage({
+        type: "COOKIEWX_TELEMETRY_SNAPSHOT",
+        telemetry: {
+          events: CWX_TELEMETRY.events.slice(),
+          count: CWX_TELEMETRY.events.length
+        }
+      }, "*");
+    } catch (_) {}
+  }
+
 
   /* =========================================================
    * CAP. 3 — UTILS
@@ -421,6 +456,20 @@
    * ========================================================= */
 
   var VENDORS = [
+    {
+      name: "Wix Analytics",
+      category: CATEGORY.STATISTICI,
+      hosts: ["frog.wix.com"],
+      paths: [],
+      cookies: []
+    },
+    {
+      name: "Wix Apps",
+      category: CATEGORY.FUNZIONALI,
+      hosts: ["panorama.wixapps.net", "wixapps.net"],
+      paths: [],
+      cookies: []
+    },
     {
       name: "Google Tag Manager",
       category: CATEGORY.STATISTICI,
@@ -825,14 +874,13 @@
     var technicalHosts = [
       "cookiewx.com",
       "cookiewx-cdn.pages.dev",
-      "pages.dev",
 
-      "wix.com",
       "wixstatic.com",
       "wixsite.com",
       "wixmp.com",
       "wixdns.net",
       "static.parastorage.com",
+      "siteassets.parastorage.com",
       "parastorage.com"
     ];
 
@@ -1282,17 +1330,47 @@
     return hostMatches(host, "cookiewx.com") || hostMatches(host, "cookiewx-cdn.pages.dev");
   }
 
-  function canTransmit(kind, url) {
+    function canTransmit(kind, url) {
     if (!url) return true;
 
-    if (isCookieWXInternalUrl(url)) return true;
+    if (isCookieWXInternalUrl(url)) {
+      recordTelemetry({
+        type: kind,
+        action: "allowed",
+        category: CATEGORY.ESSENZIALI,
+        vendor: "CookieWX",
+        url: url,
+        reason: "cookiewx_internal"
+      });
+
+      return true;
+    }
 
     var info = resolveResource(kind, url);
 
     if (!hasConsentFor(info.category)) {
       warn("CookieWX: trasmissione bloccata", kind, info.category, info.vendor, url);
+
+      recordTelemetry({
+        type: kind,
+        action: "blocked",
+        category: info.category,
+        vendor: info.vendor || "",
+        url: url,
+        reason: "missing_consent"
+      });
+
       return false;
     }
+
+    recordTelemetry({
+      type: kind,
+      action: "allowed",
+      category: info.category,
+      vendor: info.vendor || "",
+      url: url,
+      reason: "consent_granted"
+    });
 
     return true;
   }
@@ -1582,6 +1660,16 @@
       Q.scripts.push(el);
 
       log("CookieWX: script bloccato", info.category, info.vendor, src);
+
+      recordTelemetry({
+        type: "script",
+        action: "blocked",
+        category: info.category,
+        vendor: info.vendor || "",
+        url: src,
+        reason: "missing_consent_dom"
+      });
+      
     } catch (e) {
       warn("CookieWX: blockScript error", e);
     }
@@ -1850,6 +1938,16 @@
       Q.iframes.push(el);
 
       log("CookieWX: iframe bloccato", info.category, info.vendor, src);
+
+      recordTelemetry({
+        type: "iframe",
+        action: "blocked",
+        category: info.category,
+        vendor: info.vendor || "",
+        url: src,
+        reason: "missing_consent_dom"
+      });
+      
     } catch (e) {
       warn("CookieWX: blockIframe error", e);
     }
@@ -3419,6 +3517,10 @@
     setInterval(function () {
       deleteCookiesWithoutConsent();
     }, 3000);
+
+        setTimeout(publishTelemetrySnapshot, 600);
+    setTimeout(publishTelemetrySnapshot, 1600);
+    setTimeout(publishTelemetrySnapshot, 3200);
 
     log("CookieWX Loader v" + VERSION + " avviato");
   }
