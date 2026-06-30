@@ -1,37 +1,42 @@
 /* =========================================================
- * CookieWX Loader v3.0.0
- * Versione operativa senza validazione abbonamento
+ * CookieWX Loader v4.2.0
+ * Runtime Consent Firewall — versione unica completa
  *
- * Obiettivi:
- * - Non modifica mai la favicon del sito cliente.
- * - Legge consenso da: cookiewxConsenso
- * - Legge regole da:   cookiewxRegole
- * - Trigger update:    cookiewxTick
- * - Usa categorie da database quando disponibili.
- * - Se non riconosce una risorsa, la tratta come Marketing.
- * - Blocca script/iframe 3rd-party prima del consenso.
- * - Mostra placeholder per iframe/video bloccati.
- * - Legge policyUrl da window.CookieWX.regole.policyUrl.
+ * Obiettivo:
+ * - Banner + preferenze + badge
+ * - Nessuna modifica favicon
+ * - Fallback sconosciuto = Marketing
+ * - Regole DB come fonte quando disponibili
+ * - Vendor registry per principali tracker
+ * - Blocco runtime: gtag, dataLayer, fbq, ttq, ecc.
+ * - Blocco rete: fetch, XHR, sendBeacon
+ * - Blocco pixel: Image.src / img.src
+ * - Blocco nuovi script/iframe dopo caricamento loader
+ * - Placeholder iframe/video bloccati
+ * - Pulizia cookie non consentiti
+ *
+ * Limite tecnico:
+ * - Non può annullare richieste già partite prima del loader.
+ * - Può però bloccare trasmissioni successive e runtime.
  * ========================================================= */
 
-(function CookieWXLoader() {
+(function CookieWXLoaderV42() {
   "use strict";
 
   /* =========================================================
    * CAP. 0 — SAFE BOOT
    * ========================================================= */
 
-  if (window.__COOKIEWX_LOADER_V3__) return;
-  window.__COOKIEWX_LOADER_V3__ = true;
+  if (window.__COOKIEWX_LOADER_V42__) return;
+  window.__COOKIEWX_LOADER_V42__ = true;
 
 
   /* =========================================================
-   * CAP. 1 — CONFIG, COSTANTI, DEBUG
+   * CAP. 1 — CONFIG
    * ========================================================= */
 
   var DEBUG = true;
-
-  var VERSION = "3.0.0";
+  var VERSION = "4.2.0";
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -63,7 +68,9 @@
 
   var Q = {
     scripts: [],
-    iframes: []
+    iframes: [],
+    manualScripts: [],
+    manualIframes: []
   };
 
   var CWX_TEMP_PREFS = {
@@ -72,70 +79,27 @@
     marketing: true
   };
 
+  var ORIGINALS = {};
+
+
+  /* =========================================================
+   * CAP. 2 — LOG
+   * ========================================================= */
+
   function log() {
     if (!DEBUG) return;
-    try {
-      console.log.apply(console, arguments);
-    } catch (_) {}
+    try { console.log.apply(console, arguments); } catch (_) {}
   }
 
   function warn() {
     if (!DEBUG) return;
-    try {
-      console.warn.apply(console, arguments);
-    } catch (_) {}
+    try { console.warn.apply(console, arguments); } catch (_) {}
   }
 
 
   /* =========================================================
-   * CAP. 2 — CLEANUP VECCHIE VERSIONI
+   * CAP. 3 — UTILS
    * ========================================================= */
-
-  function cleanupLegacyFavicons() {
-    try {
-      document.querySelectorAll("link[data-cwx-favicon]").forEach(function (el) {
-        el.remove();
-      });
-    } catch (_) {}
-  }
-
-  cleanupLegacyFavicons();
-
-
-  /* =========================================================
-   * CAP. 3 — STATO GLOBALE CookieWX
-   * ========================================================= */
-
-  window.CookieWX = window.CookieWX || {};
-
-  window.CookieWX.version = VERSION;
-
-  window.CookieWX.consent = window.CookieWX.consent || {
-    funzionali: false,
-    statistici: false,
-    marketing: false
-  };
-
-  window.CookieWX.regole = window.CookieWX.regole || {
-    version: "0",
-    policyUrl: "",
-    cookies: [],
-    scripts: [],
-    iframes: []
-  };
-
-
-  /* =========================================================
-   * CAP. 4 — UTILS BASE
-   * ========================================================= */
-
-  function safeJsonParse(raw, fallback) {
-    try {
-      return JSON.parse(raw);
-    } catch (_) {
-      return fallback;
-    }
-  }
 
   function safeString(value) {
     return String(value == null ? "" : value).trim();
@@ -145,24 +109,71 @@
     return safeString(value).toLowerCase();
   }
 
+  function safeJsonParse(raw, fallback) {
+    try {
+      return JSON.parse(raw);
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  function escapeHtml(value) {
+    return safeString(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, "&#096;");
+  }
+
   function normalizeCategory(value) {
     var v = lower(value);
 
     if (!v) return "";
 
-    if (v === "essenziale" || v === "essential" || v === "necessary" || v === "necessari") {
+    if (
+      v === "essenziale" ||
+      v === "essenziali" ||
+      v === "essential" ||
+      v === "necessary" ||
+      v === "necessari"
+    ) {
       return CATEGORY.ESSENZIALI;
     }
 
-    if (v === "funzionale" || v === "functional" || v === "preferences" || v === "preferenze") {
+    if (
+      v === "funzionale" ||
+      v === "funzionali" ||
+      v === "functional" ||
+      v === "preferences" ||
+      v === "preferenze" ||
+      v === "supporto" ||
+      v === "pagamenti"
+    ) {
       return CATEGORY.FUNZIONALI;
     }
 
-    if (v === "statistico" || v === "statistici" || v === "analytics" || v === "analytic") {
+    if (
+      v === "statistico" ||
+      v === "statistici" ||
+      v === "analytics" ||
+      v === "analytic" ||
+      v === "performance"
+    ) {
       return CATEGORY.STATISTICI;
     }
 
-    if (v === "marketing" || v === "ads" || v === "advertising" || v === "social") {
+    if (
+      v === "marketing" ||
+      v === "ads" ||
+      v === "advertising" ||
+      v === "social" ||
+      v === "affiliazione"
+    ) {
       return CATEGORY.MARKETING;
     }
 
@@ -188,6 +199,14 @@
     }
   }
 
+  function getPathname(url) {
+    try {
+      return new URL(url, location.href).pathname.toLowerCase();
+    } catch (_) {
+      return "";
+    }
+  }
+
   function getCurrentSiteHost() {
     try {
       return location.hostname.replace(/^www\./, "").toLowerCase();
@@ -196,18 +215,42 @@
     }
   }
 
-  function isSameSite(url) {
+  function hostMatches(host, domain) {
+    host = lower(host).replace(/^www\./, "");
+    domain = lower(domain).replace(/^www\./, "");
+
+    if (!host || !domain) return false;
+
+    return host === domain || host.endsWith("." + domain);
+  }
+
+  function isSameSiteUrl(url) {
     var host = getHostname(url);
     var site = getCurrentSiteHost();
 
-    if (!host || !site) return false;
+    return !!(host && site && hostMatches(host, site));
+  }
 
-    return host === site || host.endsWith("." + site);
+  function getUrlFromInput(input) {
+    try {
+      if (!input) return "";
+
+      if (typeof input === "string") return input;
+
+      if (input instanceof Request) return input.url || "";
+
+      if (input.href) return input.href;
+
+      return String(input || "");
+    } catch (_) {
+      return "";
+    }
   }
 
   function getOrCreateUserId() {
     try {
       var id = localStorage.getItem(KEYS.USER_ID);
+
       if (id) return id;
 
       if (window.crypto && crypto.getRandomValues) {
@@ -223,6 +266,7 @@
       }
 
       localStorage.setItem(KEYS.USER_ID, id);
+
       return id;
     } catch (_) {
       return "cwx-temp-" + Date.now();
@@ -230,10 +274,9 @@
   }
 
   function readLocalCompat(key) {
-    var direct = null;
-
     try {
-      direct = localStorage.getItem(key);
+      var direct = localStorage.getItem(key);
+
       if (direct != null) return direct;
     } catch (_) {}
 
@@ -264,7 +307,44 @@
 
 
   /* =========================================================
-   * CAP. 5 — LETTURA CONSENSO E REGOLE
+   * CAP. 4 — CLEANUP VECCHIE FAVICON CookieWX
+   * ========================================================= */
+
+  function cleanupLegacyFavicons() {
+    try {
+      document.querySelectorAll("link[data-cwx-favicon]").forEach(function (el) {
+        el.remove();
+      });
+    } catch (_) {}
+  }
+
+  cleanupLegacyFavicons();
+
+
+  /* =========================================================
+   * CAP. 5 — STATO GLOBALE
+   * ========================================================= */
+
+  window.CookieWX = window.CookieWX || {};
+  window.CookieWX.version = VERSION;
+
+  window.CookieWX.consent = window.CookieWX.consent || {
+    funzionali: false,
+    statistici: false,
+    marketing: false
+  };
+
+  window.CookieWX.regole = window.CookieWX.regole || {
+    version: "0",
+    policyUrl: "",
+    cookies: [],
+    scripts: [],
+    iframes: []
+  };
+
+
+  /* =========================================================
+   * CAP. 6 — CONSENSO / REGOLE
    * ========================================================= */
 
   function readConsentFromStorage() {
@@ -337,264 +417,262 @@
 
 
   /* =========================================================
-   * CAP. 6 — GOOGLE CONSENT MODE
+   * CAP. 7 — VENDOR REGISTRY
    * ========================================================= */
 
-  window.dataLayer = window.dataLayer || [];
-
-  function rawGtag() {
-    window.dataLayer.push(arguments);
-  }
-
-  window.gtag = window.gtag || rawGtag;
-
-  window.__COOKIEWX_GA_IDS__ = window.__COOKIEWX_GA_IDS__ || [];
-  window.__COOKIEWX_GOOGLE_BLOCKED__ = true;
-
-  function detectGAFromScripts() {
-    try {
-      document.querySelectorAll('script[src*="gtag/js?id="]').forEach(function (s) {
-        var src = s.getAttribute("src") || "";
-        var match = src.match(/id=([^&]+)/);
-
-        if (!match) return;
-
-        var id = match[1];
-
-        if (window.__COOKIEWX_GA_IDS__.indexOf(id) === -1) {
-          window.__COOKIEWX_GA_IDS__.push(id);
-          window["ga-disable-" + id] = true;
-          log("CookieWX: GA ID rilevato:", id);
-        }
-      });
-    } catch (_) {}
-  }
-
-  function setGoogleDefaultDenied() {
-    try {
-      window.dataLayer = window.dataLayer || [];
-
-      window.dataLayer.push([
-        "consent",
-        "default",
-        {
-          ad_storage: "denied",
-          analytics_storage: "denied",
-          ad_user_data: "denied",
-          ad_personalization: "denied",
-          functionality_storage: "denied",
-          personalization_storage: "denied",
-          security_storage: "granted",
-          wait_for_update: 500
-        }
-      ]);
-
-      window.gtag("consent", "default", {
-        ad_storage: "denied",
-        analytics_storage: "denied",
-        ad_user_data: "denied",
-        ad_personalization: "denied",
-        functionality_storage: "denied",
-        personalization_storage: "denied",
-        security_storage: "granted",
-        wait_for_update: 500
-      });
-
-      log("CookieWX: Google Consent default denied");
-    } catch (e) {
-      warn("CookieWX: Google default denied error", e);
+  var VENDORS = [
+    {
+      name: "Google Tag Manager",
+      category: CATEGORY.STATISTICI,
+      hosts: ["googletagmanager.com"],
+      cookies: []
+    },
+    {
+      name: "Google Analytics",
+      category: CATEGORY.STATISTICI,
+      hosts: ["google-analytics.com", "analytics.google.com"],
+      paths: ["/g/collect", "/collect", "/j/collect"],
+      cookies: ["_ga", "_gid", "_gat", "_gat_gtag", "_ga_"]
+    },
+    {
+      name: "Google Ads / DoubleClick",
+      category: CATEGORY.MARKETING,
+      hosts: [
+        "googleadservices.com",
+        "doubleclick.net",
+        "googlesyndication.com",
+        "adservice.google.com"
+      ],
+      paths: [
+        "/pagead/",
+        "/ads/",
+        "/ccm/",
+        "/conversion/",
+        "/activityi"
+      ],
+      cookies: ["_gcl_au", "_gcl_aw", "_gcl_dc", "_gcl_gb", "ide", "test_cookie"]
+    },
+    {
+      name: "Meta Pixel",
+      category: CATEGORY.MARKETING,
+      hosts: ["facebook.com", "facebook.net", "connect.facebook.net", "instagram.com"],
+      paths: ["/tr", "/events"],
+      apis: ["fbq", "_fbq"],
+      cookies: ["_fbp", "_fbc", "fr"]
+    },
+    {
+      name: "TikTok Pixel",
+      category: CATEGORY.MARKETING,
+      hosts: ["analytics.tiktok.com", "business-api.tiktok.com", "tiktok.com", "tiktokcdn.com"],
+      paths: ["/i18n/pixel", "/api/v2/pixel", "/events"],
+      apis: ["ttq"],
+      cookies: ["_ttp", "ttclid", "ttcsid"]
+    },
+    {
+      name: "LinkedIn Insight",
+      category: CATEGORY.MARKETING,
+      hosts: ["linkedin.com", "licdn.com", "snap.licdn.com", "px.ads.linkedin.com"],
+      apis: ["lintrk"],
+      cookies: ["li_fat_id", "bcookie", "lidc", "bscookie"]
+    },
+    {
+      name: "Microsoft Ads / Bing UET",
+      category: CATEGORY.MARKETING,
+      hosts: ["bat.bing.com", "bing.com"],
+      paths: ["/action", "/bat.js"],
+      apis: ["uetq"],
+      cookies: ["_uetvid", "_uetsid", "muid"]
+    },
+    {
+      name: "Pinterest Tag",
+      category: CATEGORY.MARKETING,
+      hosts: ["pinterest.com", "pinimg.com", "ct.pinterest.com", "s.pinimg.com"],
+      apis: ["pintrk"],
+      cookies: ["_pinterest_ct_ua", "_pin_unauth"]
+    },
+    {
+      name: "Snapchat Pixel",
+      category: CATEGORY.MARKETING,
+      hosts: ["snapchat.com", "sc-static.net", "tr.snapchat.com"],
+      apis: ["snaptr"],
+      cookies: ["sc_at"]
+    },
+    {
+      name: "Reddit Ads",
+      category: CATEGORY.MARKETING,
+      hosts: ["redditstatic.com", "redditmedia.com", "events.redditmedia.com"],
+      apis: ["rdt"],
+      cookies: ["rdt_uuid"]
+    },
+    {
+      name: "X / Twitter Ads",
+      category: CATEGORY.MARKETING,
+      hosts: ["ads-twitter.com", "static.ads-twitter.com", "analytics.twitter.com", "twitter.com", "x.com"],
+      apis: ["twq"],
+      cookies: ["personalization_id"]
+    },
+    {
+      name: "Microsoft Clarity",
+      category: CATEGORY.STATISTICI,
+      hosts: ["clarity.ms"],
+      apis: ["clarity"],
+      cookies: ["_clck", "_clsk", "cluid"]
+    },
+    {
+      name: "Hotjar",
+      category: CATEGORY.STATISTICI,
+      hosts: ["hotjar.com", "hotjar.io"],
+      cookies: ["_hjSession", "_hjSessionUser", "_hjIncludedInSessionSample"]
+    },
+    {
+      name: "Segment",
+      category: CATEGORY.STATISTICI,
+      hosts: ["segment.com", "segment.io", "cdn.segment.com"],
+      cookies: ["ajs_anonymous_id", "ajs_user_id"]
+    },
+    {
+      name: "Matomo",
+      category: CATEGORY.STATISTICI,
+      hosts: ["matomo.cloud", "piwik.pro"],
+      cookies: ["_pk_id", "_pk_ses", "_pk_ref"]
+    },
+    {
+      name: "YouTube",
+      category: CATEGORY.MARKETING,
+      hosts: ["youtube.com", "youtube-nocookie.com", "ytimg.com", "googlevideo.com"],
+      cookies: ["yt-remote", "visitor_info1_live", "ysc"]
+    },
+    {
+      name: "Vimeo",
+      category: CATEGORY.MARKETING,
+      hosts: ["vimeo.com", "player.vimeo.com", "vimeocdn.com"],
+      cookies: ["vuid"]
+    },
+    {
+      name: "Google Maps",
+      category: CATEGORY.MARKETING,
+      hosts: ["maps.googleapis.com", "maps.gstatic.com", "google.com"],
+      paths: ["/maps"],
+      cookies: ["nid"]
+    },
+    {
+      name: "HubSpot",
+      category: CATEGORY.FUNZIONALI,
+      hosts: ["hubspot.com", "hs-scripts.com", "hs-analytics.net", "hsforms.net", "usemessages.com"],
+      cookies: ["hubspotutk", "__hstc", "__hssc", "__hssrc"]
+    },
+    {
+      name: "Intercom",
+      category: CATEGORY.FUNZIONALI,
+      hosts: ["intercom.io", "intercomcdn.com"],
+      cookies: ["intercom-id", "intercom-session"]
+    },
+    {
+      name: "Tawk.to",
+      category: CATEGORY.FUNZIONALI,
+      hosts: ["tawk.to", "embed.tawk.to"],
+      cookies: ["twk_idm_key"]
+    },
+    {
+      name: "Zendesk",
+      category: CATEGORY.FUNZIONALI,
+      hosts: ["zendesk.com", "zdassets.com", "zopim.com"],
+      cookies: ["__zlcmid"]
+    },
+    {
+      name: "Crisp",
+      category: CATEGORY.FUNZIONALI,
+      hosts: ["crisp.chat", "client.crisp.chat"],
+      cookies: ["crisp-client"]
+    },
+    {
+      name: "Stripe",
+      category: CATEGORY.FUNZIONALI,
+      hosts: ["stripe.com", "js.stripe.com"],
+      cookies: ["__stripe_mid", "__stripe_sid"]
+    },
+    {
+      name: "PayPal",
+      category: CATEGORY.FUNZIONALI,
+      hosts: ["paypal.com", "paypalobjects.com"],
+      cookies: ["paypal"]
     }
-  }
+  ];
 
-  function updateGoogleConsent(consent) {
-    try {
-      window.gtag("consent", "update", {
-        ad_storage: consent.marketing ? "granted" : "denied",
-        analytics_storage: consent.statistici ? "granted" : "denied",
-        ad_user_data: consent.marketing ? "granted" : "denied",
-        ad_personalization: consent.marketing ? "granted" : "denied",
-        functionality_storage: consent.funzionali ? "granted" : "denied",
-        personalization_storage: consent.funzionali ? "granted" : "denied",
-        security_storage: "granted"
+  function findVendorByUrl(url) {
+    var host = getHostname(url);
+    var path = getPathname(url);
+
+    if (!host) return null;
+
+    for (var i = 0; i < VENDORS.length; i++) {
+      var vendor = VENDORS[i];
+
+      var hostHit = (vendor.hosts || []).some(function (d) {
+        return hostMatches(host, d);
       });
 
-      log("CookieWX: Google Consent aggiornato", consent);
-    } catch (e) {
-      warn("CookieWX: updateGoogleConsent error", e);
-    }
-  }
+      if (!hostHit) continue;
 
-  function hardDisableGoogle() {
-    try {
-      window.__COOKIEWX_GOOGLE_BLOCKED__ = true;
-
-      detectGAFromScripts();
-
-      window.__COOKIEWX_GA_IDS__.forEach(function (id) {
-        window["ga-disable-" + id] = true;
-      });
-
-      if (window.ga) {
-        window.ga = function () {
-          warn("CookieWX: ga bloccato");
-        };
-      }
-
-      log("CookieWX: Google hard disabled");
-    } catch (e) {
-      warn("CookieWX: hardDisableGoogle error", e);
-    }
-  }
-
-  function reEnableGoogleIfAllowed() {
-    try {
-      if (!window.CookieWX.consent.statistici && !window.CookieWX.consent.marketing) {
-        return;
-      }
-
-      window.__COOKIEWX_GOOGLE_BLOCKED__ = false;
-
-      detectGAFromScripts();
-
-      window.__COOKIEWX_GA_IDS__.forEach(function (id) {
-        window["ga-disable-" + id] = false;
-      });
-
-      updateGoogleConsent(window.CookieWX.consent);
-
-      if (window.CookieWX.consent.statistici) {
-        window.__COOKIEWX_GA_IDS__.forEach(function (id) {
-          try {
-            window.gtag("config", id);
-            window.gtag("event", "page_view");
-          } catch (_) {}
+      if (vendor.paths && vendor.paths.length) {
+        var pathHit = vendor.paths.some(function (p) {
+          return path.indexOf(lower(p)) !== -1 || lower(url).indexOf(lower(p)) !== -1;
         });
+
+        if (pathHit) return vendor;
+
+        return vendor;
       }
 
-      log("CookieWX: Google riattivato se consentito");
-    } catch (e) {
-      warn("CookieWX: reEnableGoogleIfAllowed error", e);
-    }
-  }
-
-  function installDataLayerGate() {
-    try {
-      if (window.__COOKIEWX_DATALAYER_GATE__) return;
-      window.__COOKIEWX_DATALAYER_GATE__ = true;
-
-      window.dataLayer = window.dataLayer || [];
-
-      var originalPush = window.dataLayer.push.bind(window.dataLayer);
-
-      window.dataLayer.push = function () {
-        var item = arguments[0];
-
-        if (
-          Array.isArray(item) &&
-          item[0] === "config" &&
-          typeof item[1] === "string"
-        ) {
-          var measurementId = item[1];
-
-          if (window.__COOKIEWX_GA_IDS__.indexOf(measurementId) === -1) {
-            window.__COOKIEWX_GA_IDS__.push(measurementId);
-          }
-
-          if (!hasConsentFor(CATEGORY.STATISTICI)) {
-            window["ga-disable-" + measurementId] = true;
-            warn("CookieWX: config GA bloccato pre-consent", measurementId);
-            return;
-          }
-        }
-
-        return originalPush.apply(this, arguments);
-      };
-    } catch (e) {
-      warn("CookieWX: installDataLayerGate error", e);
-    }
-  }
-
-  setGoogleDefaultDenied();
-  installDataLayerGate();
-
-  /* =========================================================
- * CAP. 6.1 — MARKETING RUNTIME GUARD
- * ========================================================= */
-/*
-  Scopo:
-  - Bloccare runtime marketing anche quando alcuni script sono già stati caricati.
-  - Utile per Facebook Pixel, TikTok, LinkedIn, Pinterest, Snapchat, ecc.
-  - Non può "disinstallare" codice già eseguito, ma impedisce nuove chiamate/eventi.
-*/
-
-function hasMarketingConsent() {
-  return hasConsentFor(CATEGORY.MARKETING);
-}
-
-function blockedMarketingFunction(name) {
-  return function () {
-    if (!hasMarketingConsent()) {
-      warn("CookieWX: runtime marketing bloccato", name, arguments);
-      return;
-    }
-  };
-}
-
-function hardDisableMarketingRuntime() {
-  try {
-    window.__COOKIEWX_MARKETING_BLOCKED__ = true;
-
-    var apis = [
-      "fbq",
-      "_fbq",
-      "ttq",
-      "lintrk",
-      "pintrk",
-      "snaptr",
-      "twq",
-      "rdt",
-      "uetq"
-    ];
-
-    apis.forEach(function (api) {
-      window[api] = blockedMarketingFunction(api);
-    });
-
-    /*
-      Clarity può essere statistico o marketing a seconda della configurazione.
-      Per prudenza, se manca consenso marketing/statistici lo blocchiamo.
-    */
-    if (!hasConsentFor(CATEGORY.STATISTICI) && !hasConsentFor(CATEGORY.MARKETING)) {
-      window.clarity = blockedMarketingFunction("clarity");
+      return vendor;
     }
 
-    log("CookieWX: marketing runtime hard disabled");
-  } catch (e) {
-    warn("CookieWX: hardDisableMarketingRuntime error", e);
+    return null;
   }
-}
 
-function reEnableMarketingRuntimeIfAllowed() {
-  try {
-    if (!hasMarketingConsent()) return;
+  function findVendorByCookie(name) {
+    name = lower(name);
 
-    window.__COOKIEWX_MARKETING_BLOCKED__ = false;
+    if (!name) return null;
 
-    /*
-      Non reiniettiamo manualmente Facebook/TikTok ecc.
-      Li lasciamo ripartire solo se:
-      - lo script era in queue e viene rilasciato
-      - oppure il sito li richiama dopo il consenso.
-    */
-    log("CookieWX: marketing runtime consentito");
-  } catch (e) {
-    warn("CookieWX: reEnableMarketingRuntimeIfAllowed error", e);
+    for (var i = 0; i < VENDORS.length; i++) {
+      var vendor = VENDORS[i];
+
+      var hit = (vendor.cookies || []).some(function (pattern) {
+        pattern = lower(pattern);
+
+        if (!pattern) return false;
+
+        return name === pattern || name.indexOf(pattern) === 0;
+      });
+
+      if (hit) return vendor;
+    }
+
+    return null;
   }
-}
+
+  function findVendorByApi(api) {
+    api = lower(api);
+
+    if (!api) return null;
+
+    for (var i = 0; i < VENDORS.length; i++) {
+      var vendor = VENDORS[i];
+
+      var hit = (vendor.apis || []).some(function (x) {
+        return lower(x) === api;
+      });
+
+      if (hit) return vendor;
+    }
+
+    return null;
+  }
 
 
   /* =========================================================
-   * CAP. 7 — CLASSIFICAZIONE DA DB
+   * CAP. 8 — REGOLE DATABASE
    * ========================================================= */
 
   function getRuleCategory(rule) {
@@ -665,7 +743,7 @@ function reEnableMarketingRuntimeIfAllowed() {
 
     if (!host || !needleHost) return false;
 
-    return host === needleHost || host.endsWith("." + needleHost);
+    return hostMatches(host, needleHost);
   }
 
   function categoryFromDbUrlRule(list, url) {
@@ -714,7 +792,7 @@ function reEnableMarketingRuntimeIfAllowed() {
 
 
   /* =========================================================
-   * CAP. 8 — FALLBACK CATEGORIE
+   * CAP. 9 — CATEGORY RESOLVER UNICO
    * ========================================================= */
 
   function isEssentialCookieName(name) {
@@ -737,115 +815,14 @@ function reEnableMarketingRuntimeIfAllowed() {
     );
   }
 
-  function categorizeCookieFallback(name) {
-    name = lower(name);
-
-    if (isEssentialCookieName(name)) return CATEGORY.ESSENZIALI;
-
-    if (
-      name.indexOf("_ga") === 0 ||
-      name.indexOf("_gid") === 0 ||
-      name.indexOf("_gat") === 0 ||
-      name.indexOf("__utm") === 0
-    ) {
-      return CATEGORY.STATISTICI;
-    }
-
-    if (
-      name.indexOf("_fb") === 0 ||
-      name === "fr" ||
-      name.indexOf("_gcl") === 0 ||
-      name.indexOf("fbc") !== -1 ||
-      name.indexOf("fbp") !== -1
-    ) {
-      return CATEGORY.MARKETING;
-    }
-
-    return CATEGORY.MARKETING;
-  }
-
-  function categorizeUrlFallback(url, kind) {
+  function isTechnicalEssentialUrl(url) {
     var host = getHostname(url);
-
-    if (!host) return CATEGORY.MARKETING;
-
-    if (isSameSite(url)) return CATEGORY.ESSENZIALI;
-
-    if (isAlwaysAllowedHost(host)) return CATEGORY.ESSENZIALI;
-
-    if (
-      host.endsWith("google-analytics.com") ||
-      host.endsWith("analytics.google.com") ||
-      host.endsWith("hotjar.com") ||
-      host.endsWith("clarity.ms") ||
-      host.endsWith("segment.com") ||
-      host.endsWith("matomo.cloud")
-    ) {
-      return CATEGORY.STATISTICI;
-    }
-
-    if (
-      host.endsWith("googletagmanager.com")
-    ) {
-      return CATEGORY.STATISTICI;
-    }
-
-    if (
-      host.endsWith("facebook.com") ||
-      host.endsWith("facebook.net") ||
-      host.endsWith("instagram.com") ||
-      host.endsWith("doubleclick.net") ||
-      host.endsWith("googlesyndication.com") ||
-      host.endsWith("googleadservices.com") ||
-      host.endsWith("tiktok.com") ||
-      host.endsWith("tiktokcdn.com") ||
-      host.endsWith("youtube.com") ||
-      host.endsWith("youtube-nocookie.com") ||
-      host.endsWith("ytimg.com") ||
-      host.endsWith("vimeo.com") ||
-      host.endsWith("player.vimeo.com") ||
-      host.endsWith("google.com")
-    ) {
-      return CATEGORY.MARKETING;
-    }
-
-    return CATEGORY.MARKETING;
-  }
-
-  function getCategoryForCookie(name) {
-    var catDb = categoryFromDbCookieRule(name);
-
-    if (catDb) return catDb;
-
-    return categorizeCookieFallback(name);
-  }
-
-  function getCategoryForScript(url) {
-    var catDb = categoryFromDbUrlRule(window.CookieWX.regole.scripts, url);
-
-    if (catDb) return catDb;
-
-    return categorizeUrlFallback(url, "script");
-  }
-
-  function getCategoryForIframe(url) {
-    var catDb = categoryFromDbUrlRule(window.CookieWX.regole.iframes, url);
-
-    if (catDb) return catDb;
-
-    return categorizeUrlFallback(url, "iframe");
-  }
-
-  function isAlwaysAllowedHost(host) {
-    host = lower(host);
-
-    var site = getCurrentSiteHost();
 
     if (!host) return false;
 
-    if (site && (host === site || host.endsWith("." + site))) return true;
+    if (isSameSiteUrl(url)) return true;
 
-    var allow = [
+    var technicalHosts = [
       "cookiewx.com",
       "cookiewx-cdn.pages.dev",
       "pages.dev",
@@ -855,30 +832,616 @@ function reEnableMarketingRuntimeIfAllowed() {
       "wixsite.com",
       "wixmp.com",
       "wixdns.net",
-      "parastorage.com",
-      "static.parastorage.com"
+      "static.parastorage.com",
+      "parastorage.com"
     ];
 
-    return allow.some(function (d) {
-      return host === d || host.endsWith("." + d);
+    return technicalHosts.some(function (d) {
+      return hostMatches(host, d);
     });
   }
 
-  function shouldBlockUrl(url) {
-    if (!url) return false;
+  function resolveCookie(name) {
+    name = lower(name);
 
-    var host = getHostname(url);
+    if (!name) {
+      return {
+        kind: "cookie",
+        value: name,
+        category: CATEGORY.MARKETING,
+        vendor: "Sconosciuto",
+        source: "fallback"
+      };
+    }
 
-    if (!host) return false;
+    var catDb = categoryFromDbCookieRule(name);
 
-    if (isAlwaysAllowedHost(host)) return false;
+    if (catDb) {
+      return {
+        kind: "cookie",
+        value: name,
+        category: catDb,
+        vendor: "Regola database",
+        source: "db"
+      };
+    }
 
-    return true;
+    var vendor = findVendorByCookie(name);
+
+    if (vendor) {
+      return {
+        kind: "cookie",
+        value: name,
+        category: vendor.category,
+        vendor: vendor.name,
+        source: "vendor"
+      };
+    }
+
+    if (isEssentialCookieName(name)) {
+      return {
+        kind: "cookie",
+        value: name,
+        category: CATEGORY.ESSENZIALI,
+        vendor: "Tecnico essenziale",
+        source: "fallback"
+      };
+    }
+
+    if (
+      name.indexOf("_ga") === 0 ||
+      name.indexOf("_gid") === 0 ||
+      name.indexOf("_gat") === 0 ||
+      name.indexOf("__utm") === 0
+    ) {
+      return {
+        kind: "cookie",
+        value: name,
+        category: CATEGORY.STATISTICI,
+        vendor: "Analytics fallback",
+        source: "fallback"
+      };
+    }
+
+    if (
+      name.indexOf("_fb") === 0 ||
+      name === "fr" ||
+      name.indexOf("_gcl") === 0
+    ) {
+      return {
+        kind: "cookie",
+        value: name,
+        category: CATEGORY.MARKETING,
+        vendor: "Marketing fallback",
+        source: "fallback"
+      };
+    }
+
+    return {
+      kind: "cookie",
+      value: name,
+      category: CATEGORY.MARKETING,
+      vendor: "Sconosciuto",
+      source: "fallback"
+    };
+  }
+
+  function resolveUrl(kind, url) {
+    url = safeString(url);
+
+    if (!url) {
+      return {
+        kind: kind,
+        value: url,
+        category: CATEGORY.MARKETING,
+        vendor: "Sconosciuto",
+        source: "fallback"
+      };
+    }
+
+    var list = [];
+
+    if (kind === "script") list = window.CookieWX.regole.scripts || [];
+    if (kind === "iframe") list = window.CookieWX.regole.iframes || [];
+    if (kind === "request" || kind === "pixel" || kind === "beacon") {
+      list = []
+        .concat(window.CookieWX.regole.scripts || [])
+        .concat(window.CookieWX.regole.iframes || []);
+    }
+
+    var catDb = categoryFromDbUrlRule(list, url);
+
+    if (catDb) {
+      return {
+        kind: kind,
+        value: url,
+        category: catDb,
+        vendor: "Regola database",
+        source: "db"
+      };
+    }
+
+    var vendor = findVendorByUrl(url);
+
+    if (vendor) {
+      return {
+        kind: kind,
+        value: url,
+        category: vendor.category,
+        vendor: vendor.name,
+        source: "vendor"
+      };
+    }
+
+    if (isTechnicalEssentialUrl(url)) {
+      return {
+        kind: kind,
+        value: url,
+        category: CATEGORY.ESSENZIALI,
+        vendor: "Tecnico essenziale",
+        source: "fallback"
+      };
+    }
+
+    return {
+      kind: kind,
+      value: url,
+      category: CATEGORY.MARKETING,
+      vendor: "Sconosciuto",
+      source: "fallback"
+    };
+  }
+
+  function resolveResource(kind, value) {
+    if (kind === "cookie") return resolveCookie(value);
+
+    return resolveUrl(kind, value);
+  }
+
+  function canUse(kind, value) {
+    var info = resolveResource(kind, value);
+
+    return hasConsentFor(info.category);
+  }
+
+  function shouldBlock(kind, value) {
+    return !canUse(kind, value);
   }
 
 
   /* =========================================================
-   * CAP. 9 — COOKIE GUARD E PULIZIA COOKIE
+   * CAP. 10 — GOOGLE CONSENT FIREWALL
+   * ========================================================= */
+
+  window.dataLayer = window.dataLayer || [];
+
+  function installGoogleConsentDefaults() {
+    try {
+      window.dataLayer = window.dataLayer || [];
+      window.__COOKIEWX_GA_IDS__ = window.__COOKIEWX_GA_IDS__ || [];
+
+      window.dataLayer.push([
+        "consent",
+        "default",
+        {
+          ad_storage: "denied",
+          analytics_storage: "denied",
+          ad_user_data: "denied",
+          ad_personalization: "denied",
+          functionality_storage: "denied",
+          personalization_storage: "denied",
+          security_storage: "granted",
+          wait_for_update: 500
+        }
+      ]);
+
+      log("CookieWX: Google Consent default denied");
+    } catch (e) {
+      warn("CookieWX: Google default denied error", e);
+    }
+  }
+
+  function detectGAFromScripts() {
+    try {
+      window.__COOKIEWX_GA_IDS__ = window.__COOKIEWX_GA_IDS__ || [];
+
+      document.querySelectorAll('script[src*="gtag/js?id="], script[src*="googletagmanager.com/gtag/js"]').forEach(function (s) {
+        var src = s.getAttribute("src") || "";
+        var match = src.match(/[?&]id=([^&]+)/);
+
+        if (!match) return;
+
+        var id = match[1];
+
+        if (window.__COOKIEWX_GA_IDS__.indexOf(id) === -1) {
+          window.__COOKIEWX_GA_IDS__.push(id);
+        }
+
+        if (!hasConsentFor(CATEGORY.STATISTICI)) {
+          window["ga-disable-" + id] = true;
+        }
+      });
+    } catch (_) {}
+  }
+
+  function updateGoogleConsent(consent) {
+    try {
+      var update = {
+        ad_storage: consent.marketing ? "granted" : "denied",
+        analytics_storage: consent.statistici ? "granted" : "denied",
+        ad_user_data: consent.marketing ? "granted" : "denied",
+        ad_personalization: consent.marketing ? "granted" : "denied",
+        functionality_storage: consent.funzionali ? "granted" : "denied",
+        personalization_storage: consent.funzionali ? "granted" : "denied",
+        security_storage: "granted"
+      };
+
+      window.dataLayer = window.dataLayer || [];
+
+      window.dataLayer.push(["consent", "update", update]);
+
+      if (typeof ORIGINALS.gtag === "function") {
+        ORIGINALS.gtag("consent", "update", update);
+      }
+
+      log("CookieWX: Google Consent update", update);
+    } catch (e) {
+      warn("CookieWX: updateGoogleConsent error", e);
+    }
+  }
+
+  function classifyGtagCall(args) {
+    try {
+      var command = args && args[0];
+
+      if (command === "consent") {
+        return CATEGORY.ESSENZIALI;
+      }
+
+      if (command === "config") {
+        return CATEGORY.STATISTICI;
+      }
+
+      if (command === "event") {
+        return CATEGORY.MARKETING;
+      }
+
+      if (command === "set") {
+        return CATEGORY.FUNZIONALI;
+      }
+
+      return CATEGORY.MARKETING;
+    } catch (_) {
+      return CATEGORY.MARKETING;
+    }
+  }
+
+  function installDataLayerAndGtagFirewall() {
+    try {
+      if (window.__COOKIEWX_GOOGLE_FIREWALL__) return;
+      window.__COOKIEWX_GOOGLE_FIREWALL__ = true;
+
+      window.dataLayer = window.dataLayer || [];
+
+      ORIGINALS.dataLayerPush = window.dataLayer.push.bind(window.dataLayer);
+      ORIGINALS.gtag = typeof window.gtag === "function"
+        ? window.gtag
+        : function () {
+          ORIGINALS.dataLayerPush(arguments);
+        };
+
+      window.dataLayer.push = function () {
+        var item = arguments[0];
+
+        try {
+          if (Array.isArray(item)) {
+            var category = classifyGtagCall(item);
+
+            if (!hasConsentFor(category)) {
+              warn("CookieWX: dataLayer bloccato", category, item);
+              return window.dataLayer.length;
+            }
+
+            if (item[0] === "config" && typeof item[1] === "string") {
+              window.__COOKIEWX_GA_IDS__ = window.__COOKIEWX_GA_IDS__ || [];
+
+              if (window.__COOKIEWX_GA_IDS__.indexOf(item[1]) === -1) {
+                window.__COOKIEWX_GA_IDS__.push(item[1]);
+              }
+
+              window["ga-disable-" + item[1]] = !hasConsentFor(CATEGORY.STATISTICI);
+            }
+          }
+        } catch (_) {}
+
+        return ORIGINALS.dataLayerPush.apply(window.dataLayer, arguments);
+      };
+
+      window.gtag = function () {
+        var args = Array.prototype.slice.call(arguments);
+        var category = classifyGtagCall(args);
+
+        if (!hasConsentFor(category)) {
+          warn("CookieWX: gtag bloccato", category, args);
+          return;
+        }
+
+        return window.dataLayer.push(args);
+      };
+
+      log("CookieWX: Google runtime firewall installato");
+    } catch (e) {
+      warn("CookieWX: installDataLayerAndGtagFirewall error", e);
+    }
+  }
+
+  function hardDisableGoogleRuntime() {
+    try {
+      detectGAFromScripts();
+
+      window.__COOKIEWX_GA_IDS__ = window.__COOKIEWX_GA_IDS__ || [];
+
+      window.__COOKIEWX_GA_IDS__.forEach(function (id) {
+        window["ga-disable-" + id] = true;
+      });
+
+      if (window.ga) {
+        window.ga = function () {
+          warn("CookieWX: ga bloccato");
+        };
+      }
+
+      log("CookieWX: Google runtime disabled");
+    } catch (e) {
+      warn("CookieWX: hardDisableGoogleRuntime error", e);
+    }
+  }
+
+  function reEnableGoogleRuntimeIfAllowed() {
+    try {
+      if (!hasConsentFor(CATEGORY.STATISTICI) && !hasConsentFor(CATEGORY.MARKETING)) return;
+
+      detectGAFromScripts();
+
+      window.__COOKIEWX_GA_IDS__ = window.__COOKIEWX_GA_IDS__ || [];
+
+      window.__COOKIEWX_GA_IDS__.forEach(function (id) {
+        window["ga-disable-" + id] = !hasConsentFor(CATEGORY.STATISTICI);
+      });
+
+      updateGoogleConsent(window.CookieWX.consent);
+
+      if (hasConsentFor(CATEGORY.STATISTICI)) {
+        window.__COOKIEWX_GA_IDS__.forEach(function (id) {
+          try {
+            window.gtag("config", id);
+            window.gtag("event", "page_view");
+          } catch (_) {}
+        });
+      }
+
+      log("CookieWX: Google runtime riattivato se consentito");
+    } catch (e) {
+      warn("CookieWX: reEnableGoogleRuntimeIfAllowed error", e);
+    }
+  }
+
+
+  /* =========================================================
+   * CAP. 11 — MARKETING API FIREWALL
+   * ========================================================= */
+
+  function installMarketingApiFirewall() {
+    try {
+      if (window.__COOKIEWX_MARKETING_API_FIREWALL__) return;
+      window.__COOKIEWX_MARKETING_API_FIREWALL__ = true;
+
+      [
+        "fbq",
+        "_fbq",
+        "ttq",
+        "lintrk",
+        "pintrk",
+        "snaptr",
+        "twq",
+        "rdt",
+        "uetq",
+        "clarity"
+      ].forEach(function (api) {
+        var vendor = findVendorByApi(api);
+        var category = vendor ? vendor.category : CATEGORY.MARKETING;
+
+        ORIGINALS["api_" + api] = window[api];
+
+        window[api] = function () {
+          if (!hasConsentFor(category)) {
+            warn("CookieWX: API runtime bloccata", api, category, arguments);
+            return;
+          }
+
+          if (typeof ORIGINALS["api_" + api] === "function") {
+            return ORIGINALS["api_" + api].apply(this, arguments);
+          }
+        };
+      });
+
+      log("CookieWX: Marketing API firewall installato");
+    } catch (e) {
+      warn("CookieWX: installMarketingApiFirewall error", e);
+    }
+  }
+
+
+  /* =========================================================
+   * CAP. 12 — NETWORK FIREWALL
+   * ========================================================= */
+
+  function isCookieWXInternalUrl(url) {
+    var host = getHostname(url);
+
+    return hostMatches(host, "cookiewx.com") || hostMatches(host, "cookiewx-cdn.pages.dev");
+  }
+
+  function canTransmit(kind, url) {
+    if (!url) return true;
+
+    if (isCookieWXInternalUrl(url)) return true;
+
+    var info = resolveResource(kind, url);
+
+    if (!hasConsentFor(info.category)) {
+      warn("CookieWX: trasmissione bloccata", kind, info.category, info.vendor, url);
+      return false;
+    }
+
+    return true;
+  }
+
+  function installFetchFirewall() {
+    try {
+      if (window.__COOKIEWX_FETCH_FIREWALL__) return;
+      window.__COOKIEWX_FETCH_FIREWALL__ = true;
+
+      if (!window.fetch) return;
+
+      ORIGINALS.fetch = window.fetch.bind(window);
+
+      window.fetch = function (input, init) {
+        var url = getUrlFromInput(input);
+
+        if (!canTransmit("request", url)) {
+          if (typeof Response !== "undefined") {
+            return Promise.resolve(new Response("", {
+              status: 204,
+              statusText: "CookieWX blocked"
+            }));
+          }
+
+          return Promise.reject(new Error("CookieWX blocked"));
+        }
+
+        return ORIGINALS.fetch(input, init);
+      };
+
+      log("CookieWX: fetch firewall installato");
+    } catch (e) {
+      warn("CookieWX: installFetchFirewall error", e);
+    }
+  }
+
+  function installXHRFirewall() {
+    try {
+      if (window.__COOKIEWX_XHR_FIREWALL__) return;
+      window.__COOKIEWX_XHR_FIREWALL__ = true;
+
+      if (!window.XMLHttpRequest) return;
+
+      ORIGINALS.xhrOpen = XMLHttpRequest.prototype.open;
+      ORIGINALS.xhrSend = XMLHttpRequest.prototype.send;
+
+      XMLHttpRequest.prototype.open = function (method, url) {
+        try {
+          this.__cwx_url = url;
+          this.__cwx_method = method;
+        } catch (_) {}
+
+        return ORIGINALS.xhrOpen.apply(this, arguments);
+      };
+
+      XMLHttpRequest.prototype.send = function () {
+        var url = "";
+
+        try {
+          url = this.__cwx_url || "";
+        } catch (_) {}
+
+        if (url && !canTransmit("request", url)) {
+          try {
+            this.abort();
+          } catch (_) {}
+
+          warn("CookieWX: XHR bloccato", url);
+          return;
+        }
+
+        return ORIGINALS.xhrSend.apply(this, arguments);
+      };
+
+      log("CookieWX: XHR firewall installato");
+    } catch (e) {
+      warn("CookieWX: installXHRFirewall error", e);
+    }
+  }
+
+  function installBeaconFirewall() {
+    try {
+      if (window.__COOKIEWX_BEACON_FIREWALL__) return;
+      window.__COOKIEWX_BEACON_FIREWALL__ = true;
+
+      if (!navigator.sendBeacon) return;
+
+      ORIGINALS.sendBeacon = navigator.sendBeacon.bind(navigator);
+
+      navigator.sendBeacon = function (url, data) {
+        if (!canTransmit("beacon", url)) {
+          warn("CookieWX: sendBeacon bloccato", url);
+          return true;
+        }
+
+        return ORIGINALS.sendBeacon(url, data);
+      };
+
+      log("CookieWX: sendBeacon firewall installato");
+    } catch (e) {
+      warn("CookieWX: installBeaconFirewall error", e);
+    }
+  }
+
+  function installImagePixelFirewall() {
+    try {
+      if (window.__COOKIEWX_IMAGE_FIREWALL__) return;
+      window.__COOKIEWX_IMAGE_FIREWALL__ = true;
+
+      var proto = window.HTMLImageElement && window.HTMLImageElement.prototype;
+
+      if (!proto) return;
+
+      var desc = Object.getOwnPropertyDescriptor(proto, "src");
+
+      if (desc && desc.set && desc.get && desc.configurable !== false) {
+        ORIGINALS.imageSrcDescriptor = desc;
+
+        Object.defineProperty(proto, "src", {
+          configurable: true,
+          enumerable: desc.enumerable,
+
+          get: function () {
+            return desc.get.call(this);
+          },
+
+          set: function (value) {
+            var url = safeString(value);
+
+            if (url && !canTransmit("pixel", url)) {
+              this.setAttribute("data-cwx-blocked-pixel", url);
+              warn("CookieWX: Image.src bloccato", url);
+              return;
+            }
+
+            return desc.set.call(this, value);
+          }
+        });
+      }
+
+      log("CookieWX: Image pixel firewall installato");
+    } catch (e) {
+      warn("CookieWX: installImagePixelFirewall error", e);
+    }
+  }
+
+
+  /* =========================================================
+   * CAP. 13 — COOKIE GUARD
    * ========================================================= */
 
   function installCookieGuard() {
@@ -889,9 +1452,11 @@ function reEnableMarketingRuntimeIfAllowed() {
       var descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
 
       if (!descriptor || !descriptor.set || descriptor.configurable === false) {
-        warn("CookieWX: document.cookie non intercettabile in questo ambiente");
+        warn("CookieWX: document.cookie non intercettabile");
         return;
       }
+
+      ORIGINALS.cookieDescriptor = descriptor;
 
       Object.defineProperty(document, "cookie", {
         configurable: true,
@@ -904,13 +1469,10 @@ function reEnableMarketingRuntimeIfAllowed() {
         set: function (value) {
           try {
             var name = lower(String(value).split("=")[0]);
+            var info = resolveResource("cookie", name);
 
-            if (!name) return;
-
-            var category = getCategoryForCookie(name);
-
-            if (!hasConsentFor(category)) {
-              warn("CookieWX: blocca cookie write", name, category);
+            if (!hasConsentFor(info.category)) {
+              warn("CookieWX: cookie write bloccato", name, info.category, info.vendor);
               return;
             }
 
@@ -961,11 +1523,11 @@ function reEnableMarketingRuntimeIfAllowed() {
 
         if (!name) return;
 
-        var category = getCategoryForCookie(name);
+        var info = resolveResource("cookie", name);
 
-        if (!hasConsentFor(category)) {
+        if (!hasConsentFor(info.category)) {
           deleteCookieEverywhere(name);
-          log("CookieWX: cookie eliminato per mancato consenso", name, category);
+          log("CookieWX: cookie eliminato", name, info.category, info.vendor);
         }
       });
     } catch (e) {
@@ -975,7 +1537,7 @@ function reEnableMarketingRuntimeIfAllowed() {
 
 
   /* =========================================================
-   * CAP. 10 — SCRIPT GUARD
+   * CAP. 14 — DOM / SCRIPT / IFRAME FIREWALL
    * ========================================================= */
 
   function markCurrentScriptSafe() {
@@ -987,23 +1549,39 @@ function reEnableMarketingRuntimeIfAllowed() {
     } catch (_) {}
   }
 
-  function blockScript(el, src, category) {
+  function getNodeSrc(node) {
+    if (!node || node.nodeType !== 1) return "";
+
+    return (
+      node.getAttribute("src") ||
+      node.getAttribute("data-src") ||
+      node.getAttribute("data-lazy-src") ||
+      node.getAttribute("data-cookiewx-src") ||
+      node.getAttribute("data-cwx-src") ||
+      ""
+    );
+  }
+
+  function blockScript(el, src, info) {
     try {
       if (!el || !src) return;
 
-      el.setAttribute("data-cwx-blocked", "1");
-      el.setAttribute("data-cwx-category", category);
-      el.setAttribute("data-cwx-src", src);
+      info = info || resolveResource("script", src);
 
-      el.removeAttribute("src");
+      el.setAttribute("data-cwx-blocked", "1");
+      el.setAttribute("data-cwx-category", info.category);
+      el.setAttribute("data-cwx-vendor", info.vendor || "");
+      el.setAttribute("data-cwx-src", src);
 
       try {
         el.type = "text/plain";
       } catch (_) {}
 
+      el.removeAttribute("src");
+
       Q.scripts.push(el);
 
-      log("CookieWX: script bloccato", category, src);
+      log("CookieWX: script bloccato", info.category, info.vendor, src);
     } catch (e) {
       warn("CookieWX: blockScript error", e);
     }
@@ -1014,18 +1592,18 @@ function reEnableMarketingRuntimeIfAllowed() {
       if (!el) return;
       if (el.getAttribute("data-cwx-checked")) return;
       if (el.getAttribute("data-cwx-safe")) return;
+      if (el.getAttribute("data-cookiewx")) return;
 
       el.setAttribute("data-cwx-checked", "1");
 
       var src = el.getAttribute("src");
 
       if (!src) return;
-      if (!shouldBlockUrl(src)) return;
 
-      var category = getCategoryForScript(src);
+      var info = resolveResource("script", src);
 
-      if (!hasConsentFor(category)) {
-        blockScript(el, src, category);
+      if (!hasConsentFor(info.category)) {
+        blockScript(el, src, info);
       }
     } catch (e) {
       warn("CookieWX: handleScriptElement error", e);
@@ -1036,33 +1614,45 @@ function reEnableMarketingRuntimeIfAllowed() {
     var list = Q.scripts.slice();
     Q.scripts = [];
 
-    list.forEach(function (el) {
+    list.forEach(function (oldEl) {
       try {
-        var src = el.getAttribute("data-cwx-src");
-        var category = el.getAttribute("data-cwx-category") || CATEGORY.MARKETING;
+        var src = oldEl.getAttribute("data-cwx-src");
+        var category = oldEl.getAttribute("data-cwx-category") || CATEGORY.MARKETING;
 
         if (!src) return;
 
-        if (hasConsentFor(category)) {
-          try {
-            el.type = "text/javascript";
-          } catch (_) {}
-
-          el.setAttribute("src", src);
-          el.removeAttribute("data-cwx-blocked");
-
-          log("CookieWX: script rilasciato", category, src);
-        } else {
-          Q.scripts.push(el);
+        if (!hasConsentFor(category)) {
+          Q.scripts.push(oldEl);
+          return;
         }
-      } catch (_) {}
+
+        var s = document.createElement("script");
+
+        Array.prototype.slice.call(oldEl.attributes || []).forEach(function (attr) {
+          if (attr.name.indexOf("data-cwx") === 0) return;
+          if (attr.name === "type") return;
+          if (attr.name === "src") return;
+
+          try {
+            s.setAttribute(attr.name, attr.value);
+          } catch (_) {}
+        });
+
+        s.setAttribute("data-cwx-safe", "1");
+        s.src = src;
+
+        if (oldEl.parentNode) {
+          oldEl.parentNode.insertBefore(s, oldEl.nextSibling);
+        } else if (document.head) {
+          document.head.appendChild(s);
+        }
+
+        log("CookieWX: script rilasciato", category, src);
+      } catch (e) {
+        warn("CookieWX: releaseBlockedScripts error", e);
+      }
     });
   }
-
-
-  /* =========================================================
-   * CAP. 11 — IFRAME GUARD + PLACEHOLDER
-   * ========================================================= */
 
   function injectPlaceholderStyle() {
     if (document.getElementById(IDS.PLACEHOLDER_STYLE)) return;
@@ -1156,7 +1746,7 @@ function reEnableMarketingRuntimeIfAllowed() {
     return { width: width, height: height };
   }
 
-  function createIframePlaceholder(iframe, src, category) {
+  function createIframePlaceholder(iframe, src, info) {
     try {
       injectPlaceholderStyle();
 
@@ -1167,16 +1757,17 @@ function reEnableMarketingRuntimeIfAllowed() {
         if (old) return old;
       }
 
+      info = info || resolveResource("iframe", src);
+
       var id = "cwx-ph-" + Math.random().toString(16).slice(2);
       var size = getIframeDisplaySize(iframe);
-      var label = categoryLabel(category);
       var policyUrl = getPolicyUrl();
 
       var box = document.createElement("div");
       box.id = id;
       box.className = "cwx-placeholder";
       box.setAttribute("data-cwx-placeholder-for", src || "");
-      box.setAttribute("data-cwx-category", category || CATEGORY.MARKETING);
+      box.setAttribute("data-cwx-category", info.category || CATEGORY.MARKETING);
       box.style.minHeight = size.height;
 
       if (size.width !== "100%") {
@@ -1188,7 +1779,7 @@ function reEnableMarketingRuntimeIfAllowed() {
           '<div class="cwx-placeholder-title">Contenuto bloccato per preferenze cookie</div>' +
           '<div class="cwx-placeholder-text">' +
             'Per visualizzare questo elemento devi accettare i cookie ' +
-            '<strong>' + escapeHtml(label) + '</strong>.' +
+            '<strong>' + escapeHtml(categoryLabel(info.category)) + '</strong>.' +
           '</div>' +
           '<div class="cwx-placeholder-actions">' +
             '<button type="button" data-cwx-open-prefs>Gestisci preferenze</button>' +
@@ -1236,26 +1827,29 @@ function reEnableMarketingRuntimeIfAllowed() {
     } catch (_) {}
   }
 
-  function blockIframe(el, src, category) {
+  function blockIframe(el, src, info) {
     try {
       if (!el || !src) return;
 
+      info = info || resolveResource("iframe", src);
+
       el.setAttribute("data-cwx-blocked", "1");
-      el.setAttribute("data-cwx-category", category);
+      el.setAttribute("data-cwx-category", info.category);
+      el.setAttribute("data-cwx-vendor", info.vendor || "");
       el.setAttribute("data-cwx-src", src);
 
       if (!el.getAttribute("data-cwx-original-display")) {
         el.setAttribute("data-cwx-original-display", el.style.display || "");
       }
 
-      createIframePlaceholder(el, src, category);
+      createIframePlaceholder(el, src, info);
 
       el.setAttribute("src", "about:blank");
       el.style.display = "none";
 
       Q.iframes.push(el);
 
-      log("CookieWX: iframe bloccato", category, src);
+      log("CookieWX: iframe bloccato", info.category, info.vendor, src);
     } catch (e) {
       warn("CookieWX: blockIframe error", e);
     }
@@ -1265,19 +1859,18 @@ function reEnableMarketingRuntimeIfAllowed() {
     try {
       if (!el) return;
       if (el.getAttribute("data-cwx-checked")) return;
+      if (el.getAttribute("data-cookiewx")) return;
 
       el.setAttribute("data-cwx-checked", "1");
 
-      var src = el.getAttribute("src") || el.getAttribute("data-src") || el.getAttribute("data-lazy-src");
+      var src = getNodeSrc(el);
 
-      if (!src) return;
-      if (src === "about:blank") return;
-      if (!shouldBlockUrl(src)) return;
+      if (!src || src === "about:blank") return;
 
-      var category = getCategoryForIframe(src);
+      var info = resolveResource("iframe", src);
 
-      if (!hasConsentFor(category)) {
-        blockIframe(el, src, category);
+      if (!hasConsentFor(info.category)) {
+        blockIframe(el, src, info);
       }
     } catch (e) {
       warn("CookieWX: handleIframeElement error", e);
@@ -1295,17 +1888,18 @@ function reEnableMarketingRuntimeIfAllowed() {
 
         if (!src) return;
 
-        if (hasConsentFor(category)) {
-          removeIframePlaceholder(el);
-
-          el.style.display = el.getAttribute("data-cwx-original-display") || "";
-          el.setAttribute("src", src);
-          el.removeAttribute("data-cwx-blocked");
-
-          log("CookieWX: iframe rilasciato", category, src);
-        } else {
+        if (!hasConsentFor(category)) {
           Q.iframes.push(el);
+          return;
         }
+
+        removeIframePlaceholder(el);
+
+        el.style.display = el.getAttribute("data-cwx-original-display") || "";
+        el.setAttribute("src", src);
+        el.removeAttribute("data-cwx-blocked");
+
+        log("CookieWX: iframe rilasciato", category, src);
       } catch (_) {}
     });
   }
@@ -1313,34 +1907,22 @@ function reEnableMarketingRuntimeIfAllowed() {
   function enforceIframeTeardown() {
     try {
       document.querySelectorAll("iframe").forEach(function (iframe) {
-        var src =
-          iframe.getAttribute("src") ||
-          iframe.getAttribute("data-cwx-src") ||
-          iframe.getAttribute("data-src") ||
-          iframe.getAttribute("data-lazy-src") ||
-          "";
+        var src = getNodeSrc(iframe);
 
         if (!src || src === "about:blank") return;
-        if (!shouldBlockUrl(src)) return;
 
-        var category = getCategoryForIframe(src);
+        var info = resolveResource("iframe", src);
 
-        if (!hasConsentFor(category)) {
+        if (!hasConsentFor(info.category)) {
           if (!iframe.getAttribute("data-cwx-src")) {
             iframe.setAttribute("data-cwx-src", src);
           }
 
-          blockIframe(iframe, src, category);
+          blockIframe(iframe, src, info);
           return;
         }
 
         removeIframePlaceholder(iframe);
-
-        if (iframe.getAttribute("data-cwx-src")) {
-          iframe.style.display = iframe.getAttribute("data-cwx-original-display") || "";
-          iframe.setAttribute("src", iframe.getAttribute("data-cwx-src"));
-          iframe.removeAttribute("data-cwx-blocked");
-        }
       });
     } catch (e) {
       warn("CookieWX: enforceIframeTeardown error", e);
@@ -1349,7 +1931,335 @@ function reEnableMarketingRuntimeIfAllowed() {
 
 
   /* =========================================================
-   * CAP. 12 — SCAN DOM E MUTATION OBSERVER
+   * CAP. 15 — MANUAL TAGGING SUPPORT
+   * ========================================================= */
+
+  function scanManualTaggedElements() {
+    try {
+      document.querySelectorAll("script[data-cookiewx], iframe[data-cookiewx]").forEach(function (el) {
+        var tag = lower(el.tagName);
+        var category = normalizeCategory(el.getAttribute("data-cookiewx") || CATEGORY.MARKETING);
+
+        if (tag === "script") {
+          if (el.getAttribute("data-cwx-manual-registered")) return;
+
+          el.setAttribute("data-cwx-manual-registered", "1");
+
+          Q.manualScripts.push(el);
+
+          if (!hasConsentFor(category)) {
+            try {
+              el.type = "text/plain";
+            } catch (_) {}
+          }
+        }
+
+        if (tag === "iframe") {
+          if (el.getAttribute("data-cwx-manual-registered")) return;
+
+          el.setAttribute("data-cwx-manual-registered", "1");
+
+          var src = el.getAttribute("data-cookiewx-src") || el.getAttribute("data-cwx-src") || el.getAttribute("src") || "";
+
+          if (src) {
+            el.setAttribute("data-cwx-src", src);
+          }
+
+          Q.manualIframes.push(el);
+
+          if (!hasConsentFor(category) && src) {
+            blockIframe(el, src, {
+              category: category,
+              vendor: "Manual tagging",
+              source: "manual"
+            });
+          }
+        }
+      });
+    } catch (e) {
+      warn("CookieWX: scanManualTaggedElements error", e);
+    }
+  }
+
+  function releaseManualTaggedElements() {
+    try {
+      Q.manualScripts.forEach(function (oldEl) {
+        var category = normalizeCategory(oldEl.getAttribute("data-cookiewx") || CATEGORY.MARKETING);
+
+        if (!hasConsentFor(category)) return;
+        if (oldEl.getAttribute("data-cwx-released")) return;
+
+        var src = oldEl.getAttribute("data-cookiewx-src") || oldEl.getAttribute("data-cwx-src") || oldEl.getAttribute("src") || "";
+        var s = document.createElement("script");
+
+        Array.prototype.slice.call(oldEl.attributes || []).forEach(function (attr) {
+          if (attr.name.indexOf("data-cwx") === 0) return;
+          if (attr.name === "data-cookiewx") return;
+          if (attr.name === "data-cookiewx-src") return;
+          if (attr.name === "type") return;
+          if (attr.name === "src") return;
+
+          try {
+            s.setAttribute(attr.name, attr.value);
+          } catch (_) {}
+        });
+
+        s.setAttribute("data-cwx-safe", "1");
+
+        if (src) {
+          s.src = src;
+        } else {
+          s.text = oldEl.text || oldEl.textContent || "";
+        }
+
+        oldEl.setAttribute("data-cwx-released", "1");
+
+        if (oldEl.parentNode) {
+          oldEl.parentNode.insertBefore(s, oldEl.nextSibling);
+        } else if (document.head) {
+          document.head.appendChild(s);
+        }
+
+        log("CookieWX: manual script rilasciato", category, src || "inline");
+      });
+
+      Q.manualIframes.forEach(function (el) {
+        var category = normalizeCategory(el.getAttribute("data-cookiewx") || CATEGORY.MARKETING);
+        var src = el.getAttribute("data-cwx-src") || el.getAttribute("data-cookiewx-src") || "";
+
+        if (!src) return;
+        if (!hasConsentFor(category)) return;
+
+        removeIframePlaceholder(el);
+
+        el.style.display = el.getAttribute("data-cwx-original-display") || "";
+        el.setAttribute("src", src);
+        el.removeAttribute("data-cwx-blocked");
+
+        log("CookieWX: manual iframe rilasciato", category, src);
+      });
+    } catch (e) {
+      warn("CookieWX: releaseManualTaggedElements error", e);
+    }
+  }
+
+
+  /* =========================================================
+   * CAP. 16 — DOM INSERT / ATTRIBUTE FIREWALL
+   * ========================================================= */
+
+  function neutralizeNodeBeforeInsert(node) {
+    try {
+      if (!node || node.nodeType !== 1) return node;
+
+      var tag = lower(node.tagName);
+
+      if (tag === "script") {
+        if (node.getAttribute("data-cwx-safe")) return node;
+        if (node.getAttribute("data-cookiewx")) return node;
+
+        var src = node.getAttribute("src") || "";
+
+        if (!src) return node;
+
+        var info = resolveResource("script", src);
+
+        if (!hasConsentFor(info.category)) {
+          node.setAttribute("data-cwx-blocked", "1");
+          node.setAttribute("data-cwx-category", info.category);
+          node.setAttribute("data-cwx-vendor", info.vendor || "");
+          node.setAttribute("data-cwx-src", src);
+
+          try {
+            node.type = "text/plain";
+          } catch (_) {}
+
+          node.removeAttribute("src");
+          Q.scripts.push(node);
+
+          log("CookieWX: script neutralizzato prima dell'inserimento", info.category, info.vendor, src);
+        }
+      }
+
+      if (tag === "iframe") {
+        if (node.getAttribute("data-cookiewx")) return node;
+
+        var iframeSrc = getNodeSrc(node);
+
+        if (!iframeSrc || iframeSrc === "about:blank") return node;
+
+        var iframeInfo = resolveResource("iframe", iframeSrc);
+
+        if (!hasConsentFor(iframeInfo.category)) {
+          node.setAttribute("data-cwx-blocked", "1");
+          node.setAttribute("data-cwx-category", iframeInfo.category);
+          node.setAttribute("data-cwx-vendor", iframeInfo.vendor || "");
+          node.setAttribute("data-cwx-src", iframeSrc);
+          node.setAttribute("src", "about:blank");
+
+          Q.iframes.push(node);
+
+          setTimeout(function () {
+            createIframePlaceholder(node, iframeSrc, iframeInfo);
+            node.style.display = "none";
+          }, 0);
+
+          log("CookieWX: iframe neutralizzato prima dell'inserimento", iframeInfo.category, iframeInfo.vendor, iframeSrc);
+        }
+      }
+
+      if (tag === "img") {
+        var imgSrc = node.getAttribute("src") || "";
+
+        if (imgSrc && !canTransmit("pixel", imgSrc)) {
+          node.setAttribute("data-cwx-blocked-pixel", imgSrc);
+          node.removeAttribute("src");
+        }
+      }
+
+      return node;
+    } catch (e) {
+      warn("CookieWX: neutralizeNodeBeforeInsert error", e);
+      return node;
+    }
+  }
+
+  function installDomInsertFirewall() {
+    try {
+      if (window.__COOKIEWX_DOM_INSERT_FIREWALL__) return;
+      window.__COOKIEWX_DOM_INSERT_FIREWALL__ = true;
+
+      ORIGINALS.appendChild = Node.prototype.appendChild;
+      ORIGINALS.insertBefore = Node.prototype.insertBefore;
+      ORIGINALS.replaceChild = Node.prototype.replaceChild;
+
+      Node.prototype.appendChild = function (node) {
+        node = neutralizeNodeBeforeInsert(node);
+        return ORIGINALS.appendChild.call(this, node);
+      };
+
+      Node.prototype.insertBefore = function (node, ref) {
+        node = neutralizeNodeBeforeInsert(node);
+        return ORIGINALS.insertBefore.call(this, node, ref);
+      };
+
+      Node.prototype.replaceChild = function (node, oldChild) {
+        node = neutralizeNodeBeforeInsert(node);
+        return ORIGINALS.replaceChild.call(this, node, oldChild);
+      };
+
+      if (Element.prototype.setAttribute) {
+        ORIGINALS.setAttribute = Element.prototype.setAttribute;
+
+        Element.prototype.setAttribute = function (name, value) {
+          try {
+            var tag = lower(this.tagName);
+            var attr = lower(name);
+
+            if ((tag === "script" || tag === "iframe" || tag === "img") && attr === "src") {
+              var kind = tag === "script"
+                ? "script"
+                : tag === "iframe"
+                  ? "iframe"
+                  : "pixel";
+
+              var info = resolveResource(kind, value);
+
+              if (!hasConsentFor(info.category)) {
+                if (tag === "script") {
+                  this.setAttribute("data-cwx-blocked", "1");
+                  this.setAttribute("data-cwx-category", info.category);
+                  this.setAttribute("data-cwx-vendor", info.vendor || "");
+                  this.setAttribute("data-cwx-src", value);
+
+                  try {
+                    this.type = "text/plain";
+                  } catch (_) {}
+
+                  Q.scripts.push(this);
+                  warn("CookieWX: setAttribute src script bloccato", info.category, info.vendor, value);
+                  return;
+                }
+
+                if (tag === "iframe") {
+                  this.setAttribute("data-cwx-blocked", "1");
+                  this.setAttribute("data-cwx-category", info.category);
+                  this.setAttribute("data-cwx-vendor", info.vendor || "");
+                  this.setAttribute("data-cwx-src", value);
+
+                  warn("CookieWX: setAttribute src iframe bloccato", info.category, info.vendor, value);
+                  return ORIGINALS.setAttribute.call(this, name, "about:blank");
+                }
+
+                if (tag === "img") {
+                  this.setAttribute("data-cwx-blocked-pixel", value);
+                  warn("CookieWX: setAttribute src img bloccato", info.category, info.vendor, value);
+                  return;
+                }
+              }
+            }
+          } catch (_) {}
+
+          return ORIGINALS.setAttribute.call(this, name, value);
+        };
+      }
+
+      log("CookieWX: DOM insert firewall installato");
+    } catch (e) {
+      warn("CookieWX: installDomInsertFirewall error", e);
+    }
+  }
+
+  function installDocumentWriteFirewall() {
+    try {
+      if (window.__COOKIEWX_DOCUMENT_WRITE_FIREWALL__) return;
+      window.__COOKIEWX_DOCUMENT_WRITE_FIREWALL__ = true;
+
+      ORIGINALS.documentWrite = document.write ? document.write.bind(document) : null;
+      ORIGINALS.documentWriteln = document.writeln ? document.writeln.bind(document) : null;
+
+      function sanitizeHtml(html) {
+        html = String(html || "");
+
+        var blocked = false;
+
+        VENDORS.forEach(function (vendor) {
+          (vendor.hosts || []).forEach(function (host) {
+            if (html.toLowerCase().indexOf(host.toLowerCase()) !== -1 && !hasConsentFor(vendor.category)) {
+              blocked = true;
+            }
+          });
+        });
+
+        if (!blocked) return html;
+
+        warn("CookieWX: document.write potenzialmente tracciante bloccato");
+        return "";
+      }
+
+      if (ORIGINALS.documentWrite) {
+        document.write = function () {
+          var html = Array.prototype.slice.call(arguments).join("");
+          return ORIGINALS.documentWrite(sanitizeHtml(html));
+        };
+      }
+
+      if (ORIGINALS.documentWriteln) {
+        document.writeln = function () {
+          var html = Array.prototype.slice.call(arguments).join("");
+          return ORIGINALS.documentWriteln(sanitizeHtml(html));
+        };
+      }
+
+      log("CookieWX: document.write firewall installato");
+    } catch (e) {
+      warn("CookieWX: installDocumentWriteFirewall error", e);
+    }
+  }
+
+
+  /* =========================================================
+   * CAP. 17 — SCAN DOM
    * ========================================================= */
 
   function resetCheckedFlags() {
@@ -1363,8 +2273,13 @@ function reEnableMarketingRuntimeIfAllowed() {
 
   function scanNow() {
     try {
+      cleanupLegacyFavicons();
+      scanManualTaggedElements();
+
       document.querySelectorAll("script[src]").forEach(handleScriptElement);
       document.querySelectorAll("iframe[src], iframe[data-src], iframe[data-lazy-src]").forEach(handleIframeElement);
+
+      deleteCookiesWithoutConsent();
     } catch (e) {
       warn("CookieWX: scanNow error", e);
     }
@@ -1396,7 +2311,7 @@ function reEnableMarketingRuntimeIfAllowed() {
 
 
   /* =========================================================
-   * CAP. 13 — BANNER PRINCIPALE
+   * CAP. 18 — BANNER
    * ========================================================= */
 
   var CWX_BANNER_HTML =
@@ -1684,8 +2599,26 @@ function reEnableMarketingRuntimeIfAllowed() {
 
 
   /* =========================================================
-   * CAP. 14 — MODALE PREFERENZE
+   * CAP. 19 — MODALE PREFERENZE
    * ========================================================= */
+
+  function preferenceRowHtml(title, text, key, checked, disabled) {
+    return (
+      '<div class="cwx-row">' +
+        '<div class="cwx-row-copy">' +
+          '<strong>' + escapeHtml(title) + '</strong>' +
+          '<small>' + escapeHtml(text) + '</small>' +
+        '</div>' +
+        '<label class="cwx-switch' + (disabled ? " cwx-disabled" : "") + '">' +
+          '<input type="checkbox" data-cwx-pref="' + escapeAttr(key) + '"' +
+            (checked ? " checked" : "") +
+            (disabled ? " disabled" : "") +
+          '>' +
+          '<span class="cwx-slider"></span>' +
+        '</label>' +
+      '</div>'
+    );
+  }
 
   var CWX_PREFERENCES_HTML =
     '<div id="cookiewx-preferences">' +
@@ -1735,24 +2668,6 @@ function reEnableMarketingRuntimeIfAllowed() {
         '</div>' +
       '</div>' +
     '</div>';
-
-  function preferenceRowHtml(title, text, key, checked, disabled) {
-    return (
-      '<div class="cwx-row">' +
-        '<div class="cwx-row-copy">' +
-          '<strong>' + escapeHtml(title) + '</strong>' +
-          '<small>' + escapeHtml(text) + '</small>' +
-        '</div>' +
-        '<label class="cwx-switch' + (disabled ? " cwx-disabled" : "") + '">' +
-          '<input type="checkbox" data-cwx-pref="' + escapeAttr(key) + '"' +
-            (checked ? " checked" : "") +
-            (disabled ? " disabled" : "") +
-          '>' +
-          '<span class="cwx-slider"></span>' +
-        '</label>' +
-      '</div>'
-    );
-  }
 
   function injectPreferencesStyle() {
     if (document.getElementById(IDS.PREFS_STYLE)) return;
@@ -1967,7 +2882,7 @@ function reEnableMarketingRuntimeIfAllowed() {
       }
 
       document.querySelectorAll("[data-cwx-pref]").forEach(function (el) {
-        var key = el.getAttribute("data-cwx-pref");
+        var key = normalizeCategory(el.getAttribute("data-cwx-pref"));
 
         if (key === CATEGORY.ESSENZIALI) {
           el.checked = true;
@@ -1996,7 +2911,7 @@ function reEnableMarketingRuntimeIfAllowed() {
 
     root.querySelectorAll("[data-cwx-pref]").forEach(function (el) {
       el.onchange = function () {
-        var key = el.getAttribute("data-cwx-pref");
+        var key = normalizeCategory(el.getAttribute("data-cwx-pref"));
 
         if (key === CATEGORY.ESSENZIALI) return;
 
@@ -2039,7 +2954,7 @@ function reEnableMarketingRuntimeIfAllowed() {
 
 
   /* =========================================================
-   * CAP. 15 — BADGE FLOTTANTE
+   * CAP. 20 — BADGE
    * ========================================================= */
 
   var CWX_BADGE_HTML =
@@ -2189,19 +3104,17 @@ function reEnableMarketingRuntimeIfAllowed() {
 
 
   /* =========================================================
-   * CAP. 16 — SALVATAGGIO CONSENSO
+   * CAP. 21 — SALVATAGGIO CONSENSO
    * ========================================================= */
 
   function saveConsent(preferenze, tipo) {
     try {
-      var accettato = !!(
-        preferenze.funzionali ||
-        preferenze.statistici ||
-        preferenze.marketing
-      );
-
       var payload = {
-        accettato: accettato,
+        accettato: !!(
+          preferenze.funzionali ||
+          preferenze.statistici ||
+          preferenze.marketing
+        ),
         preferenze: {
           essenziali: true,
           funzionali: !!preferenze.funzionali,
@@ -2209,14 +3122,15 @@ function reEnableMarketingRuntimeIfAllowed() {
           marketing: !!preferenze.marketing
         },
         tipoConsenso: tipo,
-        dataConsenso: new Date().toISOString()
+        dataConsenso: new Date().toISOString(),
+        loaderVersion: VERSION,
+        policyUrl: getPolicyUrl() || ""
       };
 
       localStorage.setItem(KEYS.CONSENSO, JSON.stringify(payload));
       localStorage.setItem(KEYS.TICK, String(Date.now()));
 
       sendConsentToBackend(payload);
-
       applyConsent(payload.preferenze);
 
       log("CookieWX: consenso salvato", payload);
@@ -2232,7 +3146,8 @@ function reEnableMarketingRuntimeIfAllowed() {
         userId: getOrCreateUserId(),
         consenso: consensoPayload,
         referrer: document.referrer || null,
-        url: location.href
+        url: location.href,
+        loaderVersion: VERSION
       };
 
       fetch(BACKEND.CONSENT_URL, {
@@ -2250,7 +3165,7 @@ function reEnableMarketingRuntimeIfAllowed() {
 
 
   /* =========================================================
-   * CAP. 17 — APPLICAZIONE CONSENSO
+   * CAP. 22 — APPLICAZIONE CONSENSO
    * ========================================================= */
 
   function applyConsent(consentObj) {
@@ -2265,29 +3180,29 @@ function reEnableMarketingRuntimeIfAllowed() {
     updateGoogleConsent(window.CookieWX.consent);
 
     if (!window.CookieWX.consent.statistici) {
-      hardDisableGoogle();
+      hardDisableGoogleRuntime();
     } else {
-      reEnableGoogleIfAllowed();
+      reEnableGoogleRuntimeIfAllowed();
     }
 
-    if (!window.CookieWX.consent.marketing) {
-  hardDisableMarketingRuntime();
-} else {
-  reEnableMarketingRuntimeIfAllowed();
-}
-
     deleteCookiesWithoutConsent();
-
     enforceIframeTeardown();
+    scanManualTaggedElements();
 
     setTimeout(function () {
       deleteCookiesWithoutConsent();
       enforceIframeTeardown();
       resetCheckedFlags();
       scanNow();
+      releaseManualTaggedElements();
       releaseBlockedScripts();
       releaseBlockedIframes();
     }, 50);
+
+    setTimeout(function () {
+      deleteCookiesWithoutConsent();
+      enforceIframeTeardown();
+    }, 500);
 
     log("CookieWX: consenso applicato", window.CookieWX.consent);
   }
@@ -2324,12 +3239,11 @@ function reEnableMarketingRuntimeIfAllowed() {
         };
 
         updateGoogleConsent(window.CookieWX.consent);
-hardDisableGoogle();
-hardDisableMarketingRuntime();
+        hardDisableGoogleRuntime();
 
-hideBadge();
-showBanner();
-        
+        hideBadge();
+        showBanner();
+
         deleteCookiesWithoutConsent();
         enforceIframeTeardown();
       }
@@ -2345,7 +3259,7 @@ showBanner();
 
 
   /* =========================================================
-   * CAP. 18 — API PUBBLICA
+   * CAP. 23 — API PUBBLICA
    * ========================================================= */
 
   window.CookieWX.applyConsent = applyConsent;
@@ -2353,6 +3267,7 @@ showBanner();
   window.CookieWX.showPreferences = showPreferences;
   window.CookieWX.showBanner = showBanner;
   window.CookieWX.hideBanner = hideBanner;
+  window.CookieWX.resolveResource = resolveResource;
 
   window.CookieWX.track = function (category, payload) {
     try {
@@ -2379,7 +3294,7 @@ showBanner();
 
 
   /* =========================================================
-   * CAP. 19 — SYNC STORAGE / POSTMESSAGE
+   * CAP. 24 — SYNC
    * ========================================================= */
 
   window.addEventListener("storage", function (e) {
@@ -2449,30 +3364,28 @@ showBanner();
 
 
   /* =========================================================
-   * CAP. 20 — ESCAPE HTML
+   * CAP. 25 — BOOT
    * ========================================================= */
 
-  function escapeHtml(value) {
-    return safeString(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+  function installAllFirewalls() {
+    installGoogleConsentDefaults();
+    installDataLayerAndGtagFirewall();
+    installMarketingApiFirewall();
+    installFetchFirewall();
+    installXHRFirewall();
+    installBeaconFirewall();
+    installImagePixelFirewall();
+    installCookieGuard();
+    installDomInsertFirewall();
+    installDocumentWriteFirewall();
   }
-
-  function escapeAttr(value) {
-    return escapeHtml(value).replace(/`/g, "&#096;");
-  }
-
-
-  /* =========================================================
-   * CAP. 21 — AVVIO
-   * ========================================================= */
 
   function boot() {
     markCurrentScriptSafe();
-    installCookieGuard();
+    cleanupLegacyFavicons();
+
+    installAllFirewalls();
+
     detectGAFromScripts();
 
     try {
@@ -2486,30 +3399,30 @@ showBanner();
     scanNow();
 
     setTimeout(function () {
-      log("CookieWX: delayed apply 500ms");
+      log("CookieWX: delayed apply 300ms");
       detectGAFromScripts();
       applyFromStorage();
-    }, 500);
+    }, 300);
 
     setTimeout(function () {
-      log("CookieWX: delayed apply 1500ms");
+      log("CookieWX: delayed apply 1000ms");
       detectGAFromScripts();
       applyFromStorage();
-    }, 1500);
+    }, 1000);
 
     setTimeout(function () {
-      log("CookieWX: delayed apply 3000ms");
+      log("CookieWX: delayed apply 2500ms");
       detectGAFromScripts();
       applyFromStorage();
+    }, 2500);
+
+    setInterval(function () {
+      deleteCookiesWithoutConsent();
     }, 3000);
 
     log("CookieWX Loader v" + VERSION + " avviato");
   }
 
-  if (document.readyState === "loading") {
-    boot();
-  } else {
-    boot();
-  }
+  boot();
 
 })();
