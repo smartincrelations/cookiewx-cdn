@@ -517,6 +517,81 @@
   setGoogleDefaultDenied();
   installDataLayerGate();
 
+  /* =========================================================
+ * CAP. 6.1 — MARKETING RUNTIME GUARD
+ * ========================================================= */
+/*
+  Scopo:
+  - Bloccare runtime marketing anche quando alcuni script sono già stati caricati.
+  - Utile per Facebook Pixel, TikTok, LinkedIn, Pinterest, Snapchat, ecc.
+  - Non può "disinstallare" codice già eseguito, ma impedisce nuove chiamate/eventi.
+*/
+
+function hasMarketingConsent() {
+  return hasConsentFor(CATEGORY.MARKETING);
+}
+
+function blockedMarketingFunction(name) {
+  return function () {
+    if (!hasMarketingConsent()) {
+      warn("CookieWX: runtime marketing bloccato", name, arguments);
+      return;
+    }
+  };
+}
+
+function hardDisableMarketingRuntime() {
+  try {
+    window.__COOKIEWX_MARKETING_BLOCKED__ = true;
+
+    var apis = [
+      "fbq",
+      "_fbq",
+      "ttq",
+      "lintrk",
+      "pintrk",
+      "snaptr",
+      "twq",
+      "rdt",
+      "uetq"
+    ];
+
+    apis.forEach(function (api) {
+      window[api] = blockedMarketingFunction(api);
+    });
+
+    /*
+      Clarity può essere statistico o marketing a seconda della configurazione.
+      Per prudenza, se manca consenso marketing/statistici lo blocchiamo.
+    */
+    if (!hasConsentFor(CATEGORY.STATISTICI) && !hasConsentFor(CATEGORY.MARKETING)) {
+      window.clarity = blockedMarketingFunction("clarity");
+    }
+
+    log("CookieWX: marketing runtime hard disabled");
+  } catch (e) {
+    warn("CookieWX: hardDisableMarketingRuntime error", e);
+  }
+}
+
+function reEnableMarketingRuntimeIfAllowed() {
+  try {
+    if (!hasMarketingConsent()) return;
+
+    window.__COOKIEWX_MARKETING_BLOCKED__ = false;
+
+    /*
+      Non reiniettiamo manualmente Facebook/TikTok ecc.
+      Li lasciamo ripartire solo se:
+      - lo script era in queue e viene rilasciato
+      - oppure il sito li richiama dopo il consenso.
+    */
+    log("CookieWX: marketing runtime consentito");
+  } catch (e) {
+    warn("CookieWX: reEnableMarketingRuntimeIfAllowed error", e);
+  }
+}
+
 
   /* =========================================================
    * CAP. 7 — CLASSIFICAZIONE DA DB
@@ -2195,6 +2270,12 @@
       reEnableGoogleIfAllowed();
     }
 
+    if (!window.CookieWX.consent.marketing) {
+  hardDisableMarketingRuntime();
+} else {
+  reEnableMarketingRuntimeIfAllowed();
+}
+
     deleteCookiesWithoutConsent();
 
     enforceIframeTeardown();
@@ -2243,11 +2324,12 @@
         };
 
         updateGoogleConsent(window.CookieWX.consent);
-        hardDisableGoogle();
+hardDisableGoogle();
+hardDisableMarketingRuntime();
 
-        hideBadge();
-        showBanner();
-
+hideBadge();
+showBanner();
+        
         deleteCookiesWithoutConsent();
         enforceIframeTeardown();
       }
