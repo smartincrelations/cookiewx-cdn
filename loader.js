@@ -974,6 +974,82 @@
     };
   }
 
+    function getForcedCriticalUrlInfo(kind, url) {
+    var host = getHostname(url);
+    var path = getPathname(url);
+    var full = lower(url);
+
+    if (!host) return null;
+
+    // Wix Analytics: statistico, non essenziale
+    if (hostMatches(host, "frog.wix.com")) {
+      return {
+        kind: kind,
+        value: url,
+        category: CATEGORY.STATISTICI,
+        vendor: "Wix Analytics",
+        source: "forced"
+      };
+    }
+
+    // Wix Apps: funzionale, non essenziale
+    if (
+      hostMatches(host, "panorama.wixapps.net") ||
+      hostMatches(host, "wixapps.net")
+    ) {
+      return {
+        kind: kind,
+        value: url,
+        category: CATEGORY.FUNZIONALI,
+        vendor: "Wix Apps",
+        source: "forced"
+      };
+    }
+
+    // Google Ads / DoubleClick
+    if (
+      hostMatches(host, "doubleclick.net") ||
+      hostMatches(host, "googleads.g.doubleclick.net") ||
+      hostMatches(host, "ad.doubleclick.net") ||
+      hostMatches(host, "googleadservices.com") ||
+      hostMatches(host, "googlesyndication.com") ||
+      full.indexOf("google.com/pagead") !== -1 ||
+      full.indexOf("google.it/pagead") !== -1 ||
+      full.indexOf("google.com/ads") !== -1 ||
+      full.indexOf("google.it/ads") !== -1 ||
+      full.indexOf("google.com/ccm") !== -1 ||
+      path.indexOf("/pagead") !== -1 ||
+      path.indexOf("/conversion") !== -1 ||
+      path.indexOf("/activityi") !== -1
+    ) {
+      return {
+        kind: kind,
+        value: url,
+        category: CATEGORY.MARKETING,
+        vendor: "Google Ads / DoubleClick",
+        source: "forced"
+      };
+    }
+
+    // GTM / Analytics
+    if (
+      hostMatches(host, "googletagmanager.com") ||
+      hostMatches(host, "google-analytics.com") ||
+      hostMatches(host, "analytics.google.com") ||
+      hostMatches(host, "region1.google-analytics.com")
+    ) {
+      return {
+        kind: kind,
+        value: url,
+        category: CATEGORY.STATISTICI,
+        vendor: "Google Analytics / Tag Manager",
+        source: "forced"
+      };
+    }
+
+    return null;
+  }
+
   function resolveUrl(kind, url) {
     url = safeString(url);
 
@@ -985,6 +1061,12 @@
         vendor: "Sconosciuto",
         source: "fallback"
       };
+    }
+
+    var forced = getForcedCriticalUrlInfo(kind, url);
+
+    if (forced) {
+      return forced;
     }
 
     var list = [];
@@ -3366,6 +3448,8 @@
   window.CookieWX.showBanner = showBanner;
   window.CookieWX.hideBanner = hideBanner;
   window.CookieWX.resolveResource = resolveResource;
+    window.CookieWX.telemetry = CWX_TELEMETRY;
+  window.CookieWX.publishTelemetrySnapshot = publishTelemetrySnapshot;
 
   window.CookieWX.track = function (category, payload) {
     try {
