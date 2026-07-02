@@ -875,6 +875,8 @@
       "cookiewx.com",
       "cookiewx-cdn.pages.dev",
 
+      "challenges.cloudflare.com",
+
       "wixstatic.com",
       "wixsite.com",
       "wixmp.com",
@@ -980,6 +982,21 @@
     var full = lower(url);
 
     if (!host) return null;
+
+      // Cloudflare Turnstile / Challenge Platform: sicurezza anti-bot, essenziale
+if (
+  hostMatches(host, "challenges.cloudflare.com") ||
+  full.indexOf("challenges.cloudflare.com/turnstile") !== -1 ||
+  full.indexOf("challenges.cloudflare.com/cdn-cgi/challenge-platform") !== -1
+) {
+  return {
+    kind: kind,
+    value: url,
+    category: CATEGORY.ESSENZIALI,
+    vendor: "Cloudflare Turnstile",
+    source: "forced-security"
+  };
+}
 
     // Wix Analytics: statistico, non essenziale
     if (hostMatches(host, "frog.wix.com")) {
