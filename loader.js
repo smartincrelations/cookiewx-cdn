@@ -266,6 +266,40 @@
     return !!(host && site && hostMatches(host, site));
   }
 
+  function isFaviconOrSiteIconElement(el) {
+  try {
+    if (!el || !el.tagName) return false;
+
+    var tag = lower(el.tagName);
+
+    if (tag !== "link") return false;
+
+    var rel = lower(el.getAttribute("rel") || "");
+
+    return (
+      rel.indexOf("icon") !== -1 ||
+      rel.indexOf("shortcut icon") !== -1 ||
+      rel.indexOf("apple-touch-icon") !== -1 ||
+      rel.indexOf("mask-icon") !== -1 ||
+      rel.indexOf("manifest") !== -1
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+function isFaviconOrSiteIconUrl(url) {
+  url = lower(url);
+
+  return (
+    url.indexOf("favicon") !== -1 ||
+    url.indexOf("apple-touch-icon") !== -1 ||
+    url.indexOf("site.webmanifest") !== -1 ||
+    url.indexOf("browserconfig.xml") !== -1 ||
+    url.endsWith(".ico")
+  );
+}
+
   function getUrlFromInput(input) {
     try {
       if (!input) return "";
@@ -1622,51 +1656,52 @@ if (
    * ========================================================= */
 
   function installCookieGuard() {
-    try {
-      if (window.__COOKIEWX_COOKIE_GUARD__) return;
-      window.__COOKIEWX_COOKIE_GUARD__ = true;
+  try {
+    if (window.__COOKIEWX_COOKIE_GUARD__) return;
 
-      var descriptor = Object.getOwnPropertyDescriptor(Document.prototype, "cookie");
+    var proto = Document.prototype;
+    var descriptor = Object.getOwnPropertyDescriptor(proto, "cookie");
 
-      if (!descriptor || !descriptor.set || descriptor.configurable === false) {
-        warn("CookieWX: document.cookie non intercettabile");
-        return;
-      }
-
-      ORIGINALS.cookieDescriptor = descriptor;
-
-      Object.defineProperty(document, "cookie", {
-        configurable: true,
-        enumerable: true,
-
-        get: function () {
-          return descriptor.get.call(document);
-        },
-
-        set: function (value) {
-          try {
-            var name = lower(String(value).split("=")[0]);
-            var info = resolveResource("cookie", name);
-
-            if (!hasConsentFor(info.category)) {
-              warn("CookieWX: cookie write bloccato", name, info.category, info.vendor);
-              return;
-            }
-
-            descriptor.set.call(document, value);
-          } catch (e) {
-            try {
-              descriptor.set.call(document, value);
-            } catch (_) {}
-          }
-        }
-      });
-
-      log("CookieWX: cookie guard installato");
-    } catch (e) {
-      warn("CookieWX: installCookieGuard error", e);
+    if (!descriptor || !descriptor.set || !descriptor.get || descriptor.configurable === false) {
+      warn("CookieWX: document.cookie non intercettabile");
+      return;
     }
+
+    window.__COOKIEWX_COOKIE_GUARD__ = true;
+    ORIGINALS.cookieDescriptor = descriptor;
+
+    Object.defineProperty(proto, "cookie", {
+      configurable: true,
+      enumerable: descriptor.enumerable,
+
+      get: function () {
+        return descriptor.get.call(document);
+      },
+
+      set: function (value) {
+        try {
+          var name = lower(String(value).split("=")[0]);
+          var info = resolveResource("cookie", name);
+
+          if (!hasConsentFor(info.category)) {
+            warn("CookieWX: cookie write bloccato", name, info.category, info.vendor);
+            return;
+          }
+
+          descriptor.set.call(document, value);
+        } catch (e) {
+          try {
+            descriptor.set.call(document, value);
+          } catch (_) {}
+        }
+      }
+    });
+
+    log("CookieWX: cookie guard installato");
+  } catch (e) {
+    warn("CookieWX: installCookieGuard error", e);
   }
+}
 
   function deleteCookieEverywhere(name) {
     try {
@@ -2251,6 +2286,10 @@ if (
 
       var tag = lower(node.tagName);
 
+      if (isFaviconOrSiteIconElement(node)) {
+  return node;
+}
+
       if (tag === "script") {
         if (node.getAttribute("data-cwx-safe")) return node;
         if (node.getAttribute("data-cookiewx")) return node;
@@ -2308,6 +2347,10 @@ if (
       if (tag === "img") {
         var imgSrc = node.getAttribute("src") || "";
 
+          if (isFaviconOrSiteIconUrl(imgSrc)) {
+    return node;
+  }
+
         if (imgSrc && !canTransmit("pixel", imgSrc)) {
           node.setAttribute("data-cwx-blocked-pixel", imgSrc);
           node.removeAttribute("src");
@@ -2352,6 +2395,10 @@ if (
           try {
             var tag = lower(this.tagName);
             var attr = lower(name);
+
+            if (isFaviconOrSiteIconElement(this)) {
+  return ORIGINALS.setAttribute.call(this, name, value);
+}
 
             if ((tag === "script" || tag === "iframe" || tag === "img") && attr === "src") {
               var kind = tag === "script"
