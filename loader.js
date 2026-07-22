@@ -374,22 +374,6 @@ function isFaviconOrSiteIconUrl(url) {
     } catch (_) {}
   }
 
-
-  /* =========================================================
-   * CAP. 4 — CLEANUP VECCHIE FAVICON CookieWX
-   * ========================================================= */
-
-  function cleanupLegacyFavicons() {
-    try {
-      document.querySelectorAll("link[data-cwx-favicon]").forEach(function (el) {
-        el.remove();
-      });
-    } catch (_) {}
-  }
-
-  cleanupLegacyFavicons();
-
-
   /* =========================================================
    * CAP. 5 — STATO GLOBALE
    * ========================================================= */
@@ -2517,7 +2501,6 @@ if (
 
   function scanNow() {
     try {
-      cleanupLegacyFavicons();
       scanManualTaggedElements();
 
       document.querySelectorAll("script[src]").forEach(handleScriptElement);
@@ -3453,7 +3436,6 @@ if (
 
   function applyFromStorage() {
     try {
-      cleanupLegacyFavicons();
 
       var prevVersion = window.CookieWX.regole && window.CookieWX.regole.version
         ? window.CookieWX.regole.version
@@ -3628,8 +3610,6 @@ if (
 
   function boot() {
     markCurrentScriptSafe();
-    cleanupLegacyFavicons();
-
     installAllFirewalls();
 
     detectGAFromScripts();
