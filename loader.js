@@ -1099,6 +1099,37 @@ if (
     return null;
   }
 
+  function getKnownBackendUrlInfo(kind, url) {
+  var host = getHostname(url);
+  var path = getPathname(url);
+
+  if (!host) return null;
+
+  // Progetti Supabase: <project-ref>.supabase.co
+  if (!hostMatches(host, "supabase.co")) {
+    return null;
+  }
+
+  var isOfficialSupabaseBackend =
+    path.indexOf("/auth/v1/") === 0 ||
+    path.indexOf("/rest/v1/") === 0 ||
+    path.indexOf("/storage/v1/") === 0 ||
+    path.indexOf("/realtime/v1/") === 0 ||
+    path.indexOf("/functions/v1/") === 0;
+
+  if (!isOfficialSupabaseBackend) {
+    return null;
+  }
+
+  return {
+    kind: kind,
+    value: url,
+    category: CATEGORY.ESSENZIALI,
+    vendor: "Supabase Backend",
+    source: "known-backend"
+  };
+}
+
   function resolveUrl(kind, url) {
     url = safeString(url);
 
@@ -1128,19 +1159,26 @@ if (
         .concat(window.CookieWX.regole.iframes || []);
     }
 
-    var catDb = categoryFromDbUrlRule(list, url);
+var catDb = categoryFromDbUrlRule(list, url);
 
-    if (catDb) {
-      return {
-        kind: kind,
-        value: url,
-        category: catDb,
-        vendor: "Regola database",
-        source: "db"
-      };
-    }
+if (catDb) {
+  return {
+    kind: kind,
+    value: url,
+    category: catDb,
+    vendor: "Regola database",
+    source: "db"
+  };
+}
 
-    var vendor = findVendorByUrl(url);
+// Backend tecnici noti
+var knownBackend = getKnownBackendUrlInfo(kind, url);
+
+if (knownBackend) {
+  return knownBackend;
+}
+
+var vendor = findVendorByUrl(url);
 
     if (vendor) {
       return {
