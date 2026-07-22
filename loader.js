@@ -1016,6 +1016,20 @@ if (
   };
 }
 
+      // Supabase Auth: autenticazione richiesta dall'utente, essenziale
+if (
+  hostMatches(host, "supabase.co") &&
+  path.indexOf("/auth/v1/") === 0
+) {
+  return {
+    kind: kind,
+    value: url,
+    category: CATEGORY.ESSENZIALI,
+    vendor: "Supabase Auth",
+    source: "forced-auth"
+  };
+}
+
     // Wix Analytics: statistico, non essenziale
     if (hostMatches(host, "frog.wix.com")) {
       return {
