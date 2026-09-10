@@ -175,7 +175,10 @@
       v === "essenziali" ||
       v === "essential" ||
       v === "necessary" ||
-      v === "necessari"
+      v === "necessari" ||
+      v === "gestione cookie" ||
+      v === "gestione consenso" ||
+      v === "cmp"
     ) {
       return CATEGORY.ESSENZIALI;
     }
