@@ -3602,8 +3602,33 @@ var vendor = findVendorByUrl(url);
     }
   }, 400);
 
+  // =========================================================
+  // SICUREZZA (2026-09-11) — Allowlist origini per i message
+  // COOKIEWX_SYNC / COOKIEWX_CONSENT. Prima della patch QUALUNQUE
+  // iframe nella pagina poteva iniettare regole (policyUrl di phishing
+  // nel banner!) e forzare consensi falsi. Regola:
+  //   1. sempre accettata l'origine del sito ospite (stesso origin:
+  //      script inline/embed del cliente);
+  //   2. accettati i domini cookiewx.com (iframe banner/configuratori
+  //      serviti dal backend CookieWX);
+  //   3. tutto il resto viene ignorato.
+  // Per aggiungere un mittente legittimo cross-origin, estendere il
+  // regex sotto (es. il dominio della dashboard embeddata).
+  // =========================================================
+  function isTrustedMessageOrigin(origin) {
+    if (!origin) return false;
+    if (origin === location.origin) return true;
+    return /(^|\.)cookiewx\.com$/.test(origin.replace(/^https?:\/\//, ""));
+  }
+
   window.addEventListener("message", function (e) {
     if (!e || !e.data) return;
+
+    // [PATCH] origine non fidata: ignora il messaggio (anti-iniezione regole)
+    if (!isTrustedMessageOrigin(e.origin)) {
+      warn("CookieWX: messaggio ignorato da origine non fidata:", e.origin);
+      return;
+    }
 
     if (e.data.type === "COOKIEWX_SYNC") {
       if (e.data.regole) {
