@@ -3538,6 +3538,95 @@ var vendor = findVendorByUrl(url);
     }
   }
 
+  /* =========================================================
+   * CAP. 22b — B2 SCAN-TO-BLOCK: pull regole dal backend CookieWX
+   * HeroWX Cloud classifica le risorse e pusha le regole in
+   * RegoleCookieWX (POST /syncRegole); qui il loader le ritira
+   * via GET /getRegole (CORS aperto) e le applica come un
+   * COOKIEWX_SYNC. Non sovrascrive mai una versione piu' recente
+   * (es. appena arrivata via postMessage dal banner) e preserva
+   * la policyUrl eventualmente gia' impostata.
+   * Disattivabile con window.CookieWX.config.rulesBackendSync = false.
+   * ========================================================= */
+  var RULES_BACKEND_URL = "https://www.cookiewx.com/_functions/getRegole";
+  var RULES_PULL_INTERVAL_MS = 5 * 60 * 1000;
+  var rulesPullTimer = null;
+  var rulesPullInFlight = false;
+
+  function versionTime(v) {
+    if (!v) return 0;
+    var n = Number(v);
+    if (!isNaN(n) && String(v).trim() !== "") return n;
+    var d = new Date(v).getTime();
+    return isNaN(d) ? 0 : d;
+  }
+
+  function applyPulledRegole(regole) {
+    var current = window.CookieWX.regole || {};
+    var nextVersion = safeString(regole.updatedAt || Date.now());
+
+    // non tornare indietro: se la versione locale e' piu' recente, salta
+    if (versionTime(current.version) >= versionTime(nextVersion)) return;
+
+    var next = {
+      version: nextVersion,
+      policyUrl: safeString(regole.policyUrl || current.policyUrl || ""),
+      cookies: Array.isArray(regole.cookies) ? regole.cookies : [],
+      scripts: Array.isArray(regole.scripts) ? regole.scripts : [],
+      iframes: Array.isArray(regole.iframes) ? regole.iframes : []
+    };
+
+    window.CookieWX.regole = next;
+
+    try {
+      localStorage.setItem(KEYS.REGOLE, JSON.stringify(next));
+    } catch (_) {}
+
+    log("CookieWX: regole scaricate dal backend", nextVersion);
+    enforceIframeTeardown();
+    resetCheckedFlags();
+    scanNow();
+  }
+
+  function pullRegoleFromBackend() {
+    if (rulesPullInFlight) return;
+    if (window.CookieWX && window.CookieWX.config && window.CookieWX.config.rulesBackendSync === false) return;
+
+    var dominio = location.hostname;
+    if (!dominio) return;
+
+    rulesPullInFlight = true;
+
+    var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 5000) : null;
+
+    fetch(RULES_BACKEND_URL + "?dominio=" + encodeURIComponent(dominio), {
+      method: "GET",
+      credentials: "omit",
+      signal: ctrl ? ctrl.signal : undefined
+    }).then(function (r) {
+      if (timer) clearTimeout(timer);
+      return r.ok ? r.json() : null;
+    }).then(function (regole) {
+      rulesPullInFlight = false;
+      if (!regole || !Array.isArray(regole.cookies)) return;
+      applyPulledRegole(regole);
+    }).catch(function (err) {
+      rulesPullInFlight = false;
+      if (timer) clearTimeout(timer);
+      warn("CookieWX: pull regole backend non riuscito", err);
+    });
+  }
+
+  function startRulesBackendPull() {
+    // subito a boot + retry dopo 30s (copre il caso "regola appena pushata")
+    // + ogni 5 min per aggiornamenti successivi
+    setTimeout(pullRegoleFromBackend, 0);
+    setTimeout(pullRegoleFromBackend, 30000);
+    if (rulesPullTimer) clearInterval(rulesPullTimer);
+    rulesPullTimer = setInterval(pullRegoleFromBackend, RULES_PULL_INTERVAL_MS);
+  }
+
 
   /* =========================================================
    * CAP. 23 — API PUBBLICA
@@ -3703,6 +3792,7 @@ var vendor = findVendorByUrl(url);
 
     applyFromStorage();
     scanNow();
+    startRulesBackendPull();
 
     setTimeout(function () {
       log("CookieWX: delayed apply 300ms");
