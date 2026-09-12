@@ -3592,7 +3592,14 @@ var vendor = findVendorByUrl(url);
     if (rulesPullInFlight) return;
     if (window.CookieWX && window.CookieWX.config && window.CookieWX.config.rulesBackendSync === false) return;
 
-    var dominio = location.hostname;
+    // Override per demo/test: CookieWX.config.rulesBackendDomain o
+    // window.COOKIEWX_RULES_DOMAIN forzano il dominio delle regole
+    // (altrimenti si usa il dominio del sito corrente).
+    var dominio = safeString(
+      (window.CookieWX && window.CookieWX.config && window.CookieWX.config.rulesBackendDomain) ||
+      window.COOKIEWX_RULES_DOMAIN ||
+      location.hostname
+    );
     if (!dominio) return;
 
     rulesPullInFlight = true;

@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CookieWX — Demo Scan-to-Block live</title>
+
+<!-- ============================================================
+     DEMO SCAN-TO-BLOCK — CookieWX / HeroWX Cloud
+     Questa pagina SIMULA un sito cliente con il loader installato.
+     Le regole arrivano davvero dal backend (RegoleCookieWX):
+     questo dominio e' un dominio demo, quindi forziamo il dominio
+     delle regole a "repubblica.it" (ultimo scan HeroWX Cloud).
+     Su un sito cliente reale NON serve questa riga: il loader
+     scarica automaticamente le regole del dominio del sito.
+     ============================================================ -->
+<script>window.COOKIEWX_RULES_DOMAIN = "repubblica.it";</script>
+
+<!-- 1) Loader CookieWX (come nei siti clienti) -->
+<script src="/loader.js"></script>
+
+<style>
+  :root {
+    --cwx-primary: #4f46e5;
+    --cwx-dark: #0f172a;
+    --cwx-ok: #16a34a;
+    --cwx-blocked: #dc2626;
+    --cwx-panel: #111827;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    background: #f8fafc;
+    color: var(--cwx-dark);
+    min-height: 100vh;
+    padding-bottom: 90px;
+  }
+  header {
+    background: linear-gradient(135deg, var(--cwx-dark), #1e293b);
+    color: #fff;
+    padding: 48px 24px 40px;
+    text-align: center;
+  }
+  header .badge {
+    display: inline-block;
+    background: var(--cwx-primary);
+    padding: 6px 14px;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .5px;
+    margin-bottom: 16px;
+  }
+  header h1 { font-size: 32px; margin-bottom: 10px; }
+  header p { opacity: .85; max-width: 640px; margin: 0 auto; }
+  .steps {
+    display: flex; gap: 16px; justify-content: center; flex-wrap: wrap;
+    max-width: 960px; margin: -22px auto 0; padding: 0 16px;
+  }
+  .step {
+    background: #fff; border-radius: 12px; padding: 16px 20px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.08); flex: 1 1 240px; max-width: 300px;
+    font-size: 14px;
+  }
+  .step b { color: var(--cwx-primary); display: block; margin-bottom: 4px; }
+  main { max-width: 960px; margin: 36px auto 0; padding: 0 16px; }
+  .card {
+    background: #fff; border-radius: 12px; padding: 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06); margin-bottom: 20px;
+  }
+  .card h2 { font-size: 19px; margin-bottom: 12px; }
+  .card p { font-size: 14px; line-height: 1.6; color: #475569; }
+  code {
+    background: #eef2ff; color: var(--cwx-primary);
+    padding: 2px 6px; border-radius: 6px; font-size: 13px;
+  }
+  .first-party-ok {
+    margin-top: 12px; padding: 12px 14px; border-radius: 10px;
+    background: #ecfdf5; border: 1px solid #a7f3d0;
+    color: #065f46; font-size: 14px;
+  }
+  .cta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+  .cta-row button {
+    border: 0; border-radius: 10px; padding: 12px 20px;
+    font-size: 14px; font-weight: 600; cursor: pointer;
+  }
+  .btn-accept { background: var(--cwx-primary); color: #fff; }
+  .btn-accept:hover { background: #4338ca; }
+  .btn-reset { background: #e2e8f0; color: #334155; }
+  .btn-reset:hover { background: #cbd5e1; }
+
+  /* ---- Pannello live ---- */
+  #cwx-demo-panel {
+    position: fixed; right: 16px; bottom: 16px; width: 380px; max-width: calc(100vw - 32px);
+    max-height: 62vh; overflow-y: auto;
+    background: var(--cwx-panel); color: #e5e7eb;
+    border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,.35);
+    font-size: 13px; z-index: 999999;
+    font-family: "Segoe UI", system-ui, sans-serif;
+  }
+  #cwx-demo-panel .head {
+    position: sticky; top: 0; background: var(--cwx-panel);
+    padding: 14px 16px 10px; border-bottom: 1px solid #1f2937;
+  }
+  #cwx-demo-panel .head b { color: #fff; font-size: 14px; }
+  #cwx-demo-panel .status {
+    display: inline-block; width: 9px; height: 9px; border-radius: 50%;
+    margin-right: 6px; background: #6b7280;
+  }
+  #cwx-demo-panel .status.on { background: var(--cwx-ok); }
+  #cwx-demo-panel .meta { padding: 10px 16px; color: #9ca3af; font-size: 12px; }
+  #cwx-demo-panel .counters { display: flex; gap: 8px; padding: 0 16px 10px; }
+  #cwx-demo-panel .counter {
+    flex: 1; background: #1f2937; border-radius: 8px; padding: 8px;
+    text-align: center;
+  }
+  #cwx-demo-panel .counter b { display: block; font-size: 20px; color: #fff; }
+  #cwx-demo-panel .counter span { font-size: 11px; color: #9ca3af; }
+  #cwx-demo-panel .events { padding: 0 8px 12px; }
+  #cwx-demo-panel .ev {
+    display: flex; gap: 8px; align-items: baseline;
+    padding: 6px 8px; border-radius: 6px; margin-bottom: 4px;
+    background: #1f2937; font-size: 12px;
+  }
+  #cwx-demo-panel .ev .act { font-weight: 700; flex: 0 0 58px; }
+  #cwx-demo-panel .ev .act.blocked { color: #f87171; }
+  #cwx-demo-panel .ev .act.allowed { color: #4ade80; }
+  #cwx-demo-panel .ev .url {
+    color: #9ca3af; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; flex: 1;
+  }
+  #cwx-demo-panel .ev .cat { flex: 0 0 auto; color: #c7d2fe; }
+  @media (max-width: 640px) {
+    #cwx-demo-panel { right: 8px; left: 8px; width: auto; max-height: 46vh; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="badge">HERO WX CLOUD · LIVE</div>
+  <h1>Scan-to-Block: la demo</h1>
+  <p>Questa pagina si comporta come il sito di un cliente con CookieWX installato.
+     Le regole di blocco che vedi arrivano dal cloud: sono il risultato reale
+     dell'ultima scansione HeroWX di <b>repubblica.it</b>.</p>
+</header>
+
+<div class="steps">
+  <div class="step"><b>1 · Scansione</b>HeroWX Cloud scansiona il sito e classifica cookie, script e iframe per provider.</div>
+  <div class="step"><b>2 · Regole</b>I pattern classificati sono pushati in RegoleCookieWX e serviti via <code>getRegole</code>.</div>
+  <div class="step"><b>3 · Blocco</b>Il loader sul sito cliente scarica le regole e blocca tutto prima del consenso.</div>
+</div>
+
+<main>
+  <div class="card">
+    <h2>Script di terze parti iniettati in questa pagina</h2>
+    <p>Subito dopo il loader, questa pagina carica script e iframe tipici di un sito
+       reale. Senza consenso, il loader li blocca sulla base delle regole cloud:
+       <code>googletagmanager.com</code> → statistici,
+       <code>connect.facebook.net</code> → marketing,
+       <code>cdn.iubenda.com</code> → statistici.</p>
+    <div class="first-party-ok" id="fp-status">⏳ Test script first-party in corso…</div>
+  </div>
+
+  <div class="card">
+    <h2>Prova il consenso</h2>
+    <p>Con il banner CookieWX (in basso) nega tutto e osserva i blocchi nel pannello.
+       Poi concedi il consenso qui o dal banner: gli script vengono rilasciati in tempo reale.</p>
+    <div class="cta-row">
+      <button class="btn-accept" onclick="grantAll()">✅ Concedi consenso completo</button>
+      <button class="btn-reset" onclick="resetDemo()">↺ Reset demo (ricarica pulita)</button>
+    </div>
+  </div>
+</main>
+
+<!-- ============ SCRIPT DI TERZE PARTI (dopo il loader: intercettati) ============ -->
+<script async src="https://www.googletagmanager.com/gtm.js?id=GTM-COOKIEX01"></script>
+<script async src="https://connect.facebook.net/en_US/fbevents.js"></script>
+<script async src="https://cdn.iubenda.com/cookie_solution/iubenda_cs.js"></script>
+<iframe src="https://cdn-gl.imrworldwide.com/novms/html/ls.html" width="1" height="1" style="position:absolute;left:-9999px"></iframe>
+
+<script>
+  // Iniezione dinamica dopo 3s: dimostra l'intercettazione anche degli script
+  // aggiunti al DOM a runtime (come fanno gli SPA).
+  setTimeout(function () {
+    var s = document.createElement("script");
+    s.src = "https://connect.facebook.net/it_IT/bundle/sdk.js/";
+    s.async = true;
+    document.body.appendChild(s);
+  }, 3000);
+
+  // Script first-party: NON deve essere toccato dal loader.
+  window.__cwxFirstPartyRan = true;
+  document.getElementById("fp-status").textContent =
+    "✅ Script first-party estrapolato e funzionante — il loader non tocca ciò che è del sito.";
+</script>
+
+<!-- ============ PANNELLO LIVE ============ -->
+<div id="cwx-demo-panel">
+  <div class="head"><span class="status" id="dot"></span><b>Blocco live — CookieWX</b></div>
+  <div class="meta" id="rules-meta">⏳ Scarico regole dal backend CookieWX…</div>
+  <div class="counters">
+    <div class="counter"><b id="c-blocked">0</b><span>bloccati</span></div>
+    <div class="counter"><b id="c-allowed">0</b><span>consentiti</span></div>
+    <div class="counter"><b id="c-rules">0</b><span>regole attive</span></div>
+  </div>
+  <div class="events" id="events"></div>
+</div>
+
+<script>
+(function () {
+  var evBox = document.getElementById("events");
+  var MAX_EV = 30;
+
+  function addEvent(ev) {
+    if (!ev || !ev.type) return;
+    var row = document.createElement("div");
+    row.className = "ev";
+    var act = ev.action === "blocked" ? "blocked" : "allowed";
+    row.innerHTML =
+      '<span class="act ' + act + '">' + act + '</span>' +
+      '<span class="url" title="' + (ev.url || "") + '">' + (ev.type + " · " + (ev.url || "")).slice(0, 60) + '</span>' +
+      '<span class="cat">' + (ev.category || "") + '</span>';
+    evBox.insertBefore(row, evBox.firstChild);
+    while (evBox.children.length > MAX_EV) evBox.removeChild(evBox.lastChild);
+  }
+
+  window.addEventListener("message", function (e) {
+    if (e.data && e.data.type === "COOKIEWX_TELEMETRY_EVENT") {
+      addEvent(e.data.event);
+    }
+  });
+
+  // Contatori: bloccati/allowati dal telemetry, regole da CookieWX.regole
+  var blocked = 0, allowed = 0;
+  window.addEventListener("message", function (e) {
+    if (e.data && e.data.type === "COOKIEWX_TELEMETRY_EVENT") {
+      if (e.data.event.action === "blocked") blocked++;
+      if (e.data.event.action === "allowed") allowed++;
+      document.getElementById("c-blocked").textContent = blocked;
+      document.getElementById("c-allowed").textContent = allowed;
+    }
+  });
+
+  var rulesSeen = false;
+  setInterval(function () {
+    var r = window.CookieWX && window.CookieWX.regole;
+    if (!r) return;
+    var n = (r.cookies || []).length + (r.scripts || []).length + (r.iframes || []).length;
+    document.getElementById("c-rules").textContent = n;
+    if (!rulesSeen && n > 0) {
+      rulesSeen = true;
+      document.getElementById("dot").className = "status on";
+      document.getElementById("rules-meta").innerHTML =
+        "Regole cloud <b>repubblica.it</b> · versione " +
+        String(r.version || "").slice(0, 19).replace("T", " ") +
+        " · sorgente RegoleCookieWX";
+    }
+  }, 1000);
+})();
+
+function grantAll() {
+  if (window.CookieWX && window.CookieWX.applyConsent) {
+    window.CookieWX.applyConsent({ funzionali: true, statistici: true, marketing: true });
+  }
+}
+
+function resetDemo() {
+  try {
+    Object.keys(localStorage)
+      .filter(function (k) { return k.indexOf("cookiewx") === 0; })
+      .forEach(function (k) { localStorage.removeItem(k); });
+  } catch (e) {}
+  location.reload();
+}
+</script>
+
+</body>
+</html>
