@@ -3967,6 +3967,7 @@ var vendor = findVendorByUrl(url);
 
     applyFromStorage();
     scanNow();
+    pullConfigFromBackend(); // config banner dal nuovo backend (se COOKIEWX_API configurato)
     startRulesBackendPull();
 
     setTimeout(function () {
