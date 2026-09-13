@@ -3575,13 +3575,32 @@ var vendor = findVendorByUrl(url);
   function sendConsentToBackend(consensoPayload) {
     try {
       var payload = {
-        domain: location.hostname,
+        // bannerDominio() rispetta l'override demo (COOKIEWX_RULES_DOMAIN);
+        // in produzione equivale a location.hostname
+        domain: bannerDominio(),
         userId: getOrCreateUserId(),
         consenso: consensoPayload,
         referrer: document.referrer || null,
         url: location.href,
         loaderVersion: VERSION
       };
+
+      // Dev/demo: se COOKIEWX_API e' valorizzato, il consenso va al
+      // backend indicato (e NON ai server di produzione).
+      if (API) {
+        try {
+          fetch(API.CONSENSI, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload),
+            keepalive: true
+          }).catch(function () {});
+        } catch (_) {}
+        log("CookieWX: consenso inviato backend custom", payload);
+        return;
+      }
 
       fetch(BACKEND.CONSENT_URL, {
         method: "POST",
