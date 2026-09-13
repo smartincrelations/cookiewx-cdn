@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.2.0";
+  var VERSION = "4.3.0";
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -56,8 +56,33 @@
   };
 
   var BACKEND = {
-    CONSENT_URL: "https://www.cookiewx.com/_functions/cookiewxConsent"
+    CONSENT_URL: "https://www.cookiewx.com/_functions/cookiewxConsent",
+    // Fase 3 (2026-09-13): dual-write sul nuovo backend Cloudflare.
+    // Il consenso continua ad arrivare a Wix (DB fisico) e in parallelo
+    // viene replicato su api.cookiewx.com → D1 (vista dashboard).
+    CONSENT_URL_2: "https://api.cookiewx.com/consent"
   };
+
+  /* =========================================================
+   * NUOVO BACKEND (v4.3) — opzionale, con fallback.
+   * Se window.COOKIEWX_API (o CookieWX.config.apiBase) e' valorizzato,
+   * il loader usa il nuovo backend per regole, config banner e consensi.
+   * Se non e' configurato o non risponde, tutto resta come prima:
+   * endpoint Wix legacy + aspetto banner di default.
+   * ========================================================= */
+  var API_BASE = String(
+    (window.CookieWX && window.CookieWX.config && window.CookieWX.config.apiBase) ||
+    window.COOKIEWX_API ||
+    ""
+  ).replace(/\/+$/, "");
+
+  var API = API_BASE
+    ? {
+        REGOLE: API_BASE + "/api/regole",
+        CONFIG: API_BASE + "/api/config",
+        CONSENSI: API_BASE + "/api/consensi"
+      }
+    : null;
 
   var CATEGORY = {
     ESSENZIALI: "essenziali",
@@ -2768,6 +2793,128 @@ var vendor = findVendorByUrl(url);
     document.head.appendChild(style);
   }
 
+
+  /* =========================================================
+   * CAP. 18b — CONFIG BANNER REMOTA (v4.3)
+   * Se il nuovo backend e' configurato (window.COOKIEWX_API),
+   * scarica la config del banner per questo dominio: colori,
+   * testi, posizione, tema. Senza config o senza backend:
+   * aspetto di default, nessuna rottura.
+   * ========================================================= */
+
+  var bannerConfig = null;
+
+  function bannerDominio() {
+    return safeString(
+      (window.CookieWX && window.CookieWX.config && window.CookieWX.config.rulesBackendDomain) ||
+      window.COOKIEWX_RULES_DOMAIN ||
+      location.hostname
+    );
+  }
+
+  function ensureBackdrop() {
+    if (document.getElementById("cookiewx-backdrop")) return;
+    if (!document.body) return;
+    var b = document.createElement("div");
+    b.id = "cookiewx-backdrop";
+    b.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:2147483646;";
+    document.body.appendChild(b);
+  }
+
+  function removeBackdrop() {
+    var b = document.getElementById("cookiewx-backdrop");
+    if (b) b.remove();
+  }
+
+  function applyBannerConfig(cfg) {
+    if (!cfg || typeof cfg !== "object") return;
+    bannerConfig = cfg;
+    window.CookieWX.bannerConfig = cfg;
+
+    var banner = document.getElementById(IDS.BANNER);
+
+    // --- testi ---
+    if (banner) {
+      var t = banner.querySelector(".cwx-banner-title");
+      if (t && cfg.titolo) t.textContent = String(cfg.titolo);
+      var x = banner.querySelector(".cwx-banner-text");
+      if (x && cfg.testo) {
+        x.innerHTML = escapeHtml(String(cfg.testo)) +
+          ' <a href="#" data-cwx-policy>Cookie e privacy policy</a>.';
+        bindPolicyLink();
+      }
+      var pw = banner.querySelector(".cwx-powered-wrap");
+      if (pw) pw.style.display = cfg.mostraBranding === false ? "none" : "";
+    }
+
+    // --- stile: colore, tema, posizione ---
+    var old = document.getElementById("cookiewx-banner-theme");
+    if (old) old.remove();
+
+    var css = "";
+    var col = /^#[0-9a-fA-F]{3,8}$/.test(cfg.colorePrimario || "") ? cfg.colorePrimario : null;
+    if (col) {
+      css += '#cookiewx-banner button[data-cwx="accept"]{background:' + col + ' !important;}';
+      css += '#cookiewx-banner button[data-cwx="prefs"]{background:' + col + '1A !important;color:' + col + ' !important;}';
+    }
+    if (cfg.tema === "scuro") {
+      css += "#cookiewx-banner{background:#171720 !important;}";
+      css += "#cookiewx-banner .cwx-banner-title{color:#f4f4f5 !important;}";
+      css += "#cookiewx-banner .cwx-banner-text{color:#a1a1aa !important;}";
+      css += "#cookiewx-banner .cwx-banner-text a{color:#f4f4f5 !important;}";
+      css += "#cookiewx-banner .cwx-powered-wrap{color:#a1a1aa !important;}";
+    }
+
+    var pos = cfg.posizione;
+    if (pos === "basso-sinistra" || pos === "basso-destra" || pos === "centro") {
+      var cardCss =
+        "#cookiewx-banner{width:min(430px,calc(100vw - 32px)) !important;border-radius:16px !important;box-shadow:0 12px 34px rgba(0,0,0,.28) !important;}" +
+        "#cookiewx-banner .cwx-banner-inner{flex-direction:column !important;align-items:stretch !important;padding:18px !important;}" +
+        "#cookiewx-banner .cwx-banner-actions{display:grid !important;grid-template-columns:1fr !important;width:100% !important;}" +
+        "#cookiewx-banner .cwx-powered-wrap{justify-content:center !important;}";
+      if (pos === "basso-sinistra") {
+        css += "#cookiewx-banner{inset:auto auto 16px 16px !important;}" + cardCss;
+        removeBackdrop();
+      } else if (pos === "basso-destra") {
+        css += "#cookiewx-banner{inset:auto 16px 16px auto !important;}" + cardCss;
+        removeBackdrop();
+      } else {
+        css += "#cookiewx-banner{inset:50% auto auto 50% !important;transform:translate(-50%,calc(-50% + 24px)) !important;}" + cardCss +
+          "#cookiewx-banner.cwx-banner-show{transform:translate(-50%,-50%) !important;}";
+        ensureBackdrop();
+      }
+    } else {
+      removeBackdrop();
+    }
+
+    if (css && document.head) {
+      var st = document.createElement("style");
+      st.id = "cookiewx-banner-theme";
+      st.textContent = css;
+      document.head.appendChild(st);
+    }
+  }
+
+  function pullConfigFromBackend() {
+    if (!API) return; // nuovo backend non configurato: aspetto di default
+    var dominio = bannerDominio();
+    if (!dominio) return;
+
+    fetch(API.CONFIG + "?dominio=" + encodeURIComponent(dominio), {
+      method: "GET",
+      credentials: "omit"
+    }).then(function (r) {
+      return r.ok ? r.json() : null; // 404 = nessuna config salvata: default
+    }).then(function (cfg) {
+      if (cfg) {
+        log("CookieWX: config banner dal backend", cfg);
+        applyBannerConfig(cfg);
+      }
+    }).catch(function () {
+      // backend irraggiungibile: resta l'aspetto di default
+    });
+  }
+
   function showBanner() {
     if (document.getElementById(IDS.BANNER)) return;
 
@@ -2788,6 +2935,9 @@ var vendor = findVendorByUrl(url);
       bindBannerEvents();
       bindPolicyLink();
 
+      // config remota eventualmente gia' scaricata prima del mount
+      if (bannerConfig) applyBannerConfig(bannerConfig);
+
       requestAnimationFrame(function () {
         banner.classList.add("cwx-banner-show");
       });
@@ -2802,6 +2952,7 @@ var vendor = findVendorByUrl(url);
     if (!el) return;
 
     el.classList.remove("cwx-banner-show");
+    removeBackdrop();
 
     setTimeout(function () {
       if (el && el.parentNode) el.remove();
@@ -3441,6 +3592,21 @@ var vendor = findVendorByUrl(url);
         keepalive: true
       }).catch(function () {});
 
+      // Dual-write Fase 3: replica del consenso sul nuovo backend (fire-and-
+      // forget, mai bloccante; se fallisce, il consenso resta su Wix).
+      if (BACKEND.CONSENT_URL_2) {
+        try {
+          fetch(BACKEND.CONSENT_URL_2, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(payload),
+            keepalive: true
+          }).catch(function () {});
+        } catch (_) {}
+      }
+
       log("CookieWX: consenso inviato backend", payload);
     } catch (_) {}
   }
@@ -3548,7 +3714,9 @@ var vendor = findVendorByUrl(url);
    * la policyUrl eventualmente gia' impostata.
    * Disattivabile con window.CookieWX.config.rulesBackendSync = false.
    * ========================================================= */
-  var RULES_BACKEND_URL = "https://www.cookiewx.com/_functions/getRegole";
+  // Fase 3 (2026-09-13): switch da Wix al nuovo backend Cloudflare.
+  // Parita' risposta verificata su produzione (shape e contenuto identici).
+  var RULES_BACKEND_URL = "https://api.cookiewx.com/getRegole";
   var RULES_PULL_INTERVAL_MS = 5 * 60 * 1000;
   var rulesPullTimer = null;
   var rulesPullInFlight = false;
