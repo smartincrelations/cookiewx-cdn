@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-14 ~01:00 (conversazione "frontend/scanner")
+Ultimo aggiornamento: 2026-09-15 00:04 (conversazione "SENTINEL" — patch A7 loader)
 
 ## Repo
 
@@ -48,4 +48,10 @@ Ultimo aggiornamento: 2026-09-14 ~01:00 (conversazione "frontend/scanner")
 
 ## Ultime modifiche
 
+- 2026-09-15 00:04 (chat SENTINEL): patch A7 — loader v4.3.1:
+  `sendConsentToBackend` ora invia `url` = `location.origin + location.pathname`
+  e `referrer` = origin+pathname (mai più query/hash con token/PII).
+  Fallback di contratto intatto (shape payload invariata, solo valori sanificati).
+  Test live su demo.html: consenso OK (200 su api.cookiewx.com + dual-write Wix),
+  payload verificato senza query (`?resetToken=...` strippato).
 - 2026-09-14: HANDOFF.md aggiunto (conversazione frontend/scanner).
