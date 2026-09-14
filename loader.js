@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.3.0";
+  var VERSION = "4.3.1"; // [A7] strip query/hash da url+referrer nel payload consenso
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -3574,14 +3574,28 @@ var vendor = findVendorByUrl(url);
 
   function sendConsentToBackend(consensoPayload) {
     try {
+      // [PATCH A7 SENTINEL 2026-09-14] privacy: mai inviare query/hash di
+      // URL e referrer (possono contenere token/PII, es. ?resetToken=...):
+      // si invia solo origin + pathname.
+      var urlSafe = location.origin + location.pathname;
+      var referrerSafe = null;
+      try {
+        if (document.referrer) {
+          var refUrl = new URL(document.referrer);
+          referrerSafe = refUrl.origin + refUrl.pathname;
+        }
+      } catch (_) {
+        referrerSafe = null;
+      }
+
       var payload = {
         // bannerDominio() rispetta l'override demo (COOKIEWX_RULES_DOMAIN);
         // in produzione equivale a location.hostname
         domain: bannerDominio(),
         userId: getOrCreateUserId(),
         consenso: consensoPayload,
-        referrer: document.referrer || null,
-        url: location.href,
+        referrer: referrerSafe,
+        url: urlSafe,
         loaderVersion: VERSION
       };
 
