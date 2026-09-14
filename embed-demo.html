@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>HeroWX Embed (LIVE) — esempio integrazione</title>
+<style>
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#f6f6fb;margin:0;padding:40px;display:flex;flex-direction:column;gap:40px;align-items:center}
+  h1{font-size:20px;color:#1a1a2e}
+  section{background:#fff;border-radius:16px;padding:28px;max-width:520px;width:100%}
+</style>
+</head>
+<body>
+  <h1>Esempio integrazione embed HeroWX Cloud</h1>
+
+  <section>
+    <h2>Modalità "scanner"</h2>
+    <!-- Il widget token è PUBBLICO per design: permessi minimi (quick scan +
+         lettura esito) + rate limit lato worker. MAI usare API_TOKEN admin. -->
+    <div data-herowx-embed
+         data-mode="scanner"
+         data-base-url="https://herowx-cloud.smartincrelations.workers.dev"
+         data-token="hwxw_c68214db4b77cc47fe7103a15aaa5657664cf573423d1e23"
+         data-label="Scansiona il tuo sito"></div>
+  </section>
+
+  <section>
+    <h2>Modalità "sigillo"</h2>
+    <div data-herowx-embed
+         data-mode="sigillo"
+         data-base-url="https://herowx-cloud.smartincrelations.workers.dev"
+         data-site-id="embed-example.com"></div>
+  </section>
+
+  <script src="https://cookiewx-cdn.pages.dev/herowx-embed.js" defer></script>
+</body>
+</html>
