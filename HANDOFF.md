@@ -1,5 +1,9 @@
 # HANDOFF — cookiewx-cdn (loader CookieWX + demo)
 
+> 🧠 **Esiste una memoria centrale di progetto: `../STATO-PROGETTO.md`
+> (cartella herowx-cloud). Leggila all'inizio e aggiornala alla fine.**
+> Questo HANDOFF resta il riferimento specifico di cookiewx-cdn.
+
 > File di coordinamento tra conversazioni Kimi Work. **Leggilo prima di
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
