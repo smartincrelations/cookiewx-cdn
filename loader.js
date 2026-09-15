@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.2.0
+ * CookieWX Loader v4.4.0
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.3.1"; // [A7] strip query/hash da url+referrer nel payload consenso
+  var VERSION = "4.4.0"; // [BR3] consenso: primario api.cookiewx.com, Wix best-effort con timeout (pre-cutover)
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -56,11 +56,14 @@
   };
 
   var BACKEND = {
-    CONSENT_URL: "https://www.cookiewx.com/_functions/cookiewxConsent",
-    // Fase 3 (2026-09-13): dual-write sul nuovo backend Cloudflare.
-    // Il consenso continua ad arrivare a Wix (DB fisico) e in parallelo
-    // viene replicato su api.cookiewx.com → D1 (vista dashboard).
-    CONSENT_URL_2: "https://api.cookiewx.com/consent"
+    // [BR3 2026-09-15] Inversione pre-cutover: il PRIMARIO del consenso e'
+    // il nuovo backend Cloudflare (api.cookiewx.com -> D1, vista dashboard).
+    CONSENT_URL: "https://api.cookiewx.com/consent",
+    // Wix resta SOLO seconda scrittura best-effort finche' risponde: dopo il
+    // cutover DNS www non punta piu' a Wix e questa rotta muore da sola,
+    // senza errori visibili ne' rallentamenti (timeout duro lato client).
+    CONSENT_URL_WIX: "https://www.cookiewx.com/_functions/cookiewxConsent",
+    WIX_TIMEOUT_MS: 4000
   };
 
   /* =========================================================
@@ -3616,6 +3619,8 @@ var vendor = findVendorByUrl(url);
         return;
       }
 
+      // [BR3] PRIMARIO: nuovo backend Cloudflare (D1). Fire-and-forget,
+      // keepalive per sopravvivere al cambio pagina.
       fetch(BACKEND.CONSENT_URL, {
         method: "POST",
         headers: {
@@ -3625,18 +3630,28 @@ var vendor = findVendorByUrl(url);
         keepalive: true
       }).catch(function () {});
 
-      // Dual-write Fase 3: replica del consenso sul nuovo backend (fire-and-
-      // forget, mai bloccante; se fallisce, il consenso resta su Wix).
-      if (BACKEND.CONSENT_URL_2) {
+      // [BR3] SECONDARIA best-effort: Wix legacy, solo finche' risponde.
+      // Timeout duro via AbortController: non deve MAI bloccare o
+      // rallentare il banner (dopo il cutover questa rotta 404isce in
+      // silenzio e puo' essere rimossa alla dismissione di Wix).
+      if (BACKEND.CONSENT_URL_WIX) {
         try {
-          fetch(BACKEND.CONSENT_URL_2, {
+          var wixOpts = {
             method: "POST",
             headers: {
               "Content-Type": "application/json"
             },
-            body: JSON.stringify(payload),
-            keepalive: true
-          }).catch(function () {});
+            body: JSON.stringify(payload)
+            // niente keepalive: non compatibile con AbortController ovunque
+          };
+          if (typeof AbortController !== "undefined") {
+            var wixCtrl = new AbortController();
+            wixOpts.signal = wixCtrl.signal;
+            setTimeout(function () {
+              try { wixCtrl.abort(); } catch (_) {}
+            }, BACKEND.WIX_TIMEOUT_MS);
+          }
+          fetch(BACKEND.CONSENT_URL_WIX, wixOpts).catch(function () {});
         } catch (_) {}
       }
 
