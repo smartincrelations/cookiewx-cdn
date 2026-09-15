@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-15 12:18 (conversazione "BRIDGE" — componente scanner homepage in embed-design)
+Ultimo aggiornamento: 2026-09-15 15:35 (conversazione "BRIDGE" — BR3 inversione consenso pre-cutover)
 
 ## Repo
 
@@ -48,6 +48,16 @@ Ultimo aggiornamento: 2026-09-15 12:18 (conversazione "BRIDGE" — componente sc
 
 ## Ultime modifiche
 
+- 2026-09-15 15:35 (chat BRIDGE): **BR3 — loader v4.4.0** (commit `37ba01d`).
+  Inversione scrittura consenso pre-cutover (task REGIA, bloccante per U4):
+  PRIMARIO = `api.cookiewx.com/consent` (keepalive); Wix
+  (`www.cookiewx.com/_functions/cookiewxConsent`) degradato a secondaria
+  BEST-EFFORT con timeout duro 4s via AbortController (`WIX_TIMEOUT_MS`) —
+  mai bloccante; dopo il cutover la rotta Wix 404irà in silenzio.
+  `CONSENT_URL_2` rinominato `CONSENT_URL_WIX`. Test live su demo.html:
+  POST primario 200 ✅, POST Wix 200 ✅, consenso v4.4.0 in localStorage,
+  banner chiuso + badge ✅, `node --check` ✅. (Righe di consenso di test
+  con dominio repubblica.it su entrambi i backend — come da prassi demo.)
 - 2026-09-15 12:18 (chat BRIDGE): preparato in `embed-design/scanner-home/`
   (workspace root, NON-repo) il componente scanner per la homepage del nuovo
   sito — esecuzione risposta REGIA 📮 (STATO-PROGETTO.md): BRIDGE prepara,
