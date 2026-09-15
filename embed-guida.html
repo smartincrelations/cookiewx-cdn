@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Integra HeroWX sul tuo sito — Guida embed | CookieWX</title>
+<meta name="description" content="Guida all'integrazione del widget HeroWX: scanner di conformità cookie self-service e sigillo 'Sito verificato' per il tuo sito. Due righe di HTML, zero dipendenze.">
+<style>
+  :root{
+    --vio:#5b5bd6; --vio-dark:#4848b8; --ink:#1a1a2e; --mut:#55557a;
+    --bg:#f6f6fb; --card:#ffffff; --line:#e4e4ef; --ok:#1e8e5a; --code:#f0f0f8;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--ink);line-height:1.6}
+  .wrap{max-width:860px;margin:0 auto;padding:0 20px}
+  header.hero{background:linear-gradient(135deg,#4a4ad0,#6c6ce8);color:#fff;padding:56px 0 44px;text-align:center}
+  header.hero h1{margin:0 0 10px;font-size:30px;letter-spacing:-.3px}
+  header.hero p{margin:0 auto;max-width:560px;opacity:.92;font-size:16px}
+  .badge{display:inline-block;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:999px;padding:4px 14px;font-size:12.5px;margin-bottom:16px}
+  main{padding:36px 0 60px}
+  section.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:28px;margin-bottom:26px;box-shadow:0 4px 18px rgba(20,20,60,.05)}
+  h2{margin:0 0 6px;font-size:21px}
+  h3{margin:22px 0 8px;font-size:16px}
+  .sub{color:var(--mut);margin:0 0 18px;font-size:14.5px}
+  .step{display:flex;gap:14px;margin:14px 0}
+  .step .n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--vio);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
+  pre{background:#1e1e30;color:#e8e8ff;border-radius:12px;padding:16px 18px;overflow-x:auto;font-size:13px;line-height:1.55;position:relative;margin:12px 0}
+  pre .tok{color:#ffd479}
+  code.k{background:var(--code);border-radius:6px;padding:2px 7px;font-size:13px}
+  .copy{position:absolute;top:10px;right:10px;background:#34345a;color:#fff;border:0;border-radius:8px;padding:5px 12px;font-size:12px;cursor:pointer}
+  .copy:hover{background:#4a4a7a}
+  table{width:100%;border-collapse:collapse;font-size:14px;margin:10px 0}
+  th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:12.5px;text-transform:uppercase;letter-spacing:.4px;color:var(--mut)}
+  .demo{display:flex;gap:26px;flex-wrap:wrap;align-items:flex-start}
+  .demo>div{flex:1 1 300px;border:1px dashed var(--line);border-radius:14px;padding:20px;background:#fbfbfe}
+  .demo h4{margin:0 0 14px;font-size:13.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.5px}
+  .note{background:#eef7f1;border:1px solid #cdeeda;border-radius:12px;padding:14px 16px;font-size:14px;color:#155e3c}
+  .warn{background:#fdf6ec;border:1px solid #f3e2bd;border-radius:12px;padding:14px 16px;font-size:14px;color:#8a5a12}
+  details{border:1px solid var(--line);border-radius:12px;padding:14px 16px;margin:10px 0;background:#fff}
+  summary{cursor:pointer;font-weight:600;font-size:14.5px}
+  details p{margin:10px 0 0;font-size:14px;color:var(--mut)}
+  footer{text-align:center;color:var(--mut);font-size:13px;padding:26px 0 40px}
+  a{color:var(--vio)}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <span class="badge">CookieWX · HeroWX Cloud</span>
+    <h1>Integra HeroWX sul tuo sito in 2 minuti</h1>
+    <p>Due righe di HTML per offrire ai tuoi visitatori una scansione di conformità
+       cookie in tempo reale — e mostrare il sigillo <strong>“Sito verificato HeroWX”</strong>.
+       Zero dipendenze, nessun conflitto con il tuo tema.</p>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ================= DEMO LIVE ================= -->
+  <section class="card" id="demo">
+    <h2>Provalo qui, adesso</h2>
+    <p class="sub">Questi due widget sono live e funzionanti: sono esattamente ciò che vedrai sul tuo sito.</p>
+    <div class="demo">
+      <div>
+        <h4>① Widget Scanner</h4>
+        <!-- Il widget token è PUBBLICO per design: permessi minimi (solo quick
+             scan + lettura esito) e rate limit lato server. MAI usare token admin. -->
+        <div data-herowx-embed
+             data-mode="scanner"
+             data-base-url="https://herowx-cloud.smartincrelations.workers.dev"
+             data-token="hwxw_c68214db4b77cc47fe7103a15aaa5657664cf573423d1e23"
+             data-label="Scansiona il tuo sito"></div>
+      </div>
+      <div>
+        <h4>② Sigillo “Sito verificato”</h4>
+        <div data-herowx-embed
+             data-mode="sigillo"
+             data-base-url="https://herowx-cloud.smartincrelations.workers.dev"
+             data-site-id="embed-example.com"></div>
+        <p style="font-size:13px;color:var(--mut);margin-top:14px">Il sigillo mostra l'esito
+           dell'ultima scansione del tuo dominio: pallino verde = sito verificato.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================= SCANNER ================= -->
+  <section class="card" id="scanner">
+    <h2>① Widget Scanner — “Scansiona il tuo sito”</h2>
+    <p class="sub">Un box self-service: il visitatore inserisce l'URL del suo sito e riceve in pochi
+       secondi cookie rilevati, script/risorse, servizi terze parti e richieste esterne.</p>
+
+    <div class="step"><div class="n">1</div><div>Incolla questo codice dove vuoi che appaia il box
+      (prima di <code class="k">&lt;/body&gt;</code> va benissimo):</div></div>
+
+<pre id="snip-scanner"><button class="copy" data-target="snip-scanner">Copia</button>&lt;div data-herowx-embed
+     data-mode="scanner"
+     data-token="<span class="tok">hwxw_c68214db4b77cc47fe7103a15aaa5657664cf573423d1e23</span>"
+     data-label="Scansiona il tuo sito"&gt;&lt;/div&gt;
+&lt;script src="https://cookiewx-cdn.pages.dev/herowx-embed.js" defer&gt;&lt;/script&gt;</pre>
+
+    <div class="step"><div class="n">2</div><div>Fatto. Il widget appare dove hai incollato il
+      <code class="k">div</code> e si adatta alla larghezza disponibile (max 420&nbsp;px).</div></div>
+
+    <p class="note">💡 Il token nello snippet è <strong>pubblico per design</strong>: ha permessi
+       minimi (può solo avviare scansioni rapide e leggerne l'esito) ed è protetto da rate limit
+       lato server — 10 scansioni/ora per visitatore. Non è una chiave segreta.</p>
+  </section>
+
+  <!-- ================= SIGILLO ================= -->
+  <section class="card" id="sigillo">
+    <h2>② Sigillo — “Sito verificato HeroWX”</h2>
+    <p class="sub">Un badge compatto da mettere nel footer o nella pagina “Conformità”: mostra in
+       tempo reale l'esito dell'ultima scansione del <em>tuo</em> dominio.</p>
+
+<pre id="snip-sigillo"><button class="copy" data-target="snip-sigillo">Copia</button>&lt;div data-herowx-embed
+     data-mode="sigillo"
+     data-site-id="<span class="tok">embed-iltuodominio.it</span>"&gt;&lt;/div&gt;
+&lt;script src="https://cookiewx-cdn.pages.dev/herowx-embed.js" defer&gt;&lt;/script&gt;</pre>
+
+    <div class="step"><div class="n">1</div><div>Sostituisci <code class="k">embed-iltuodominio.it</code>
+      con <code class="k">embed-</code> + il tuo dominio (es. per <code class="k">www.mioshop.it</code>
+      usa <code class="k">embed-mioshop.it</code>).</div></div>
+    <div class="step"><div class="n">2</div><div>Il sigillo si aggiorna da solo a ogni scansione
+      completata sul tuo dominio: niente da mantenere.</div></div>
+  </section>
+
+  <!-- ================= PIATTAFORME ================= -->
+  <section class="card" id="piattaforme">
+    <h2>Dove incollarlo: istruzioni per piattaforma</h2>
+    <table>
+      <tr><th>Piattaforma</th><th>Come si fa</th></tr>
+      <tr><td><strong>Wix</strong></td><td>Editor → <em>Aggiungi (+)</em> → <em>Incorpora codice</em> →
+        <em>Inserisci codice HTML</em> → incolla lo snippet → posiziona il riquadro dove preferisci.</td></tr>
+      <tr><td><strong>WordPress</strong></td><td>Aggiungi un blocco <em>HTML personalizzato</em> nella
+        pagina (o un widget HTML nel footer per il sigillo) e incolla lo snippet.</td></tr>
+      <tr><td><strong>Sito HTML qualsiasi</strong></td><td>Incolla lo snippet nel punto della pagina
+        dove vuoi il widget, tipicamente prima di <code class="k">&lt;/body&gt;</code>.</td></tr>
+      <tr><td><strong>Webflow / Shopify / altri</strong></td><td>Usa l'elemento “Embed” / “Custom HTML”
+        della piattaforma e incolla lo snippet.</td></tr>
+    </table>
+  </section>
+
+  <!-- ================= ATTRIBUTI ================= -->
+  <section class="card" id="attributi">
+    <h2>Personalizzazione</h2>
+    <p class="sub">Tutti gli attributi opzionali del tag <code class="k">&lt;div data-herowx-embed&gt;</code>:</p>
+    <table>
+      <tr><th>Attributo</th><th>Modalità</th><th>Default</th><th>Descrizione</th></tr>
+      <tr><td><code class="k">data-mode</code></td><td>entrambe</td><td><code class="k">scanner</code></td>
+          <td><code class="k">scanner</code> = box scansione · <code class="k">sigillo</code> = badge di stato</td></tr>
+      <tr><td><code class="k">data-token</code></td><td>scanner</td><td>—</td>
+          <td>Widget token pubblico (quello dello snippet). Richiesto per avviare scansioni.</td></tr>
+      <tr><td><code class="k">data-site-id</code></td><td>sigillo</td><td>—</td>
+          <td>Identificativo del sito: <code class="k">embed-</code> + dominio.</td></tr>
+      <tr><td><code class="k">data-label</code></td><td>scanner</td><td>“Scansiona il tuo sito”</td>
+          <td>Titolo del box. Es. “Il tuo sito è conforme al GDPR?”</td></tr>
+    </table>
+    <p class="note">🎨 Il widget vive in uno <em>shadow DOM</em> isolato: il CSS del tuo sito non lo
+       altera e lui non altera il tuo. Funziona con qualsiasi tema.</p>
+  </section>
+
+  <!-- ================= FAQ ================= -->
+  <section class="card" id="faq">
+    <h2>Domande frequenti</h2>
+    <details>
+      <summary>È sicuro avere il token visibile nel codice della pagina?</summary>
+      <p>Sì: il widget token è pensato per essere pubblico. Può solo avviare scansioni rapide e
+         leggere risultati sintetici — non dà accesso ad aree amministrative, dati di altri siti o
+         screenshot. Il server applica inoltre un rate limit di 10 scansioni/ora per visitatore.</p>
+    </details>
+    <details>
+      <summary>Cosa vede il visitatore se supera il limite di scansioni?</summary>
+      <p>Un messaggio elegante: “Troppe scansioni da questo IP: riprova tra un'ora”. Nessun errore
+         tecnico esposto.</p>
+    </details>
+    <details>
+      <summary>Il widget rallenta il mio sito?</summary>
+      <p>No: lo script pesa ~7 KB, è caricato con <code class="k">defer</code> e non ha dipendenze.
+         Il sigillo fa una sola chiamata di lettura; lo scanner chiama l'API solo quando il
+         visitatore preme “Avvia”.</p>
+    </details>
+    <details>
+      <summary>Posso scansionare siti di terzi dal mio widget?</summary>
+      <p>Sì, lo scanner accetta qualsiasi URL pubblico: è pensato proprio come strumento
+         self-service per i tuoi visitatori. Il sigillo invece mostra solo i dati del dominio
+         indicato in <code class="k">data-site-id</code>.</p>
+    </details>
+    <details>
+      <summary>Quanto dura una scansione?</summary>
+      <p>Tipicamente 5–30 secondi per la Quick Scan (homepage). Il widget aggiorna lo stato in
+         tempo reale e mostra i KPI appena pronti.</p>
+    </details>
+  </section>
+
+</main>
+
+<footer>
+  CookieWX · HeroWX Cloud — cookie banner e scanner GDPR specializzati per l'Italia.<br>
+  Serve aiuto? <a href="https://www.cookiewx.com">cookiewx.com</a>
+</footer>
+
+<script>
+  // Bottoni "Copia": copiano il contenuto testuale del pre (senza il bottone stesso)
+  document.querySelectorAll(".copy").forEach(function (btn) {
+    btn.addEventListener("click", function () {
+      var pre = document.getElementById(btn.getAttribute("data-target"));
+      var clone = pre.cloneNode(true);
+      var b = clone.querySelector(".copy"); if (b) b.remove();
+      navigator.clipboard.writeText(clone.textContent.trim()).then(function () {
+        btn.textContent = "Copiato ✓";
+        setTimeout(function () { btn.textContent = "Copia"; }, 1600);
+      });
+    });
+  });
+</script>
+<script src="https://cookiewx-cdn.pages.dev/herowx-embed.js" defer></script>
+</body>
+</html>

@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-15 00:04 (conversazione "SENTINEL" — patch A7 loader)
+Ultimo aggiornamento: 2026-09-15 10:10 (conversazione "BRIDGE" — guida embed clienti)
 
 ## Repo
 
@@ -48,6 +48,13 @@ Ultimo aggiornamento: 2026-09-15 00:04 (conversazione "SENTINEL" — patch A7 lo
 
 ## Ultime modifiche
 
+- 2026-09-15 10:10 (chat BRIDGE): `embed-guida.html` NUOVO — pagina guida
+  embed per clienti (BR1 piano REGIA): demo live dei 2 widget, snippet
+  copiabili con bottone "Copia", istruzioni Wix/WordPress/HTML, tabella
+  attributi, FAQ. Loader non toccato. Copia tecnica in
+  `embed-design/GUIDA-CLIENTI.md` (workspace root, non-repo).
+- 2026-09-15 00:30 (chat BRIDGE): `herowx-embed.js` + `embed-demo.html`
+  (widget HeroWX: scanner + sigillo, widget token pubblico).
 - 2026-09-15 00:04 (chat SENTINEL): patch A7 — loader v4.3.1:
   `sendConsentToBackend` ora invia `url` = `location.origin + location.pathname`
   e `referrer` = origin+pathname (mai più query/hash con token/PII).
