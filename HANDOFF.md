@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-15 10:50 (conversazione "BRIDGE" — decisione prodotto embed)
+Ultimo aggiornamento: 2026-09-15 12:18 (conversazione "BRIDGE" — componente scanner homepage in embed-design)
 
 ## Repo
 
@@ -48,6 +48,15 @@ Ultimo aggiornamento: 2026-09-15 10:50 (conversazione "BRIDGE" — decisione pro
 
 ## Ultime modifiche
 
+- 2026-09-15 12:18 (chat BRIDGE): preparato in `embed-design/scanner-home/`
+  (workspace root, NON-repo) il componente scanner per la homepage del nuovo
+  sito — esecuzione risposta REGIA 📮 (STATO-PROGETTO.md): BRIDGE prepara,
+  PALCO integra in cookiewx-web. `ScannerHomeSection.tsx` (Quick Scan vera su
+  api.cookiewx.com, 4 KPI, CTA → /scanner; temi chiaro/scuro) +
+  `README-INTEGRAZIONE.md`. Type-check tsc --strict: 0 errori.
+  **Questa repo NON è stata toccata** (loader, embed JS e pagine guida
+  invariati): aggiornato solo questo HANDOFF per tracciabilità.
+  In attesa di Ugo: ① approvazione e ③ posizione widget in homepage.
 - 2026-09-15 10:50 (chat BRIDGE): `embed-guida.html` riallineato alla
   decisione prodotto di Ugo — scanner = strumento marketing CookieWX/partner
   (NON proposto ai clienti finali); sigillo = feature clienti, con nota sul
