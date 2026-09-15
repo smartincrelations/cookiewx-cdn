@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-15 15:35 (conversazione "BRIDGE" — BR3 inversione consenso pre-cutover)
+Ultimo aggiornamento: 2026-09-15 22:20 (conversazione "BRIDGE" — BR4 referral verificato)
 
 ## Repo
 
@@ -48,6 +48,19 @@ Ultimo aggiornamento: 2026-09-15 15:35 (conversazione "BRIDGE" — BR3 inversion
 
 ## Ultime modifiche
 
+- 2026-09-15 22:20 (chat BRIDGE): **BR4 — referral VERIFICATO, nessun fix
+  necessario.** Il loader ha SEMPRE inviato `referrer` nel payload consenso
+  (pre-A7: `document.referrer || null`; da A7 v4.3.1: origin+pathname
+  sanitizzato). Diagnosi 0/3.084 su Wix: anche il backend Wix
+  (`http-functions.js`, fin dal commit iniziale) legge e inserisce
+  `referrer` → la causa è lato collection Wix (campo `referrer` quasi
+  certamente assente dallo schema di `ConsensiCookieWX`: Wix Data scarta
+  in silenzio i campi non in schema). E2E su demo.html con referrer simulato
+  (`https://www.google.it/search?q=...`): payload in uscita con
+  `referrer:"https://www.google.it/search"` (query strippata, corretto A7) →
+  riga D1 id=333 popolata. Bonus: righe REALI id=330-332 da siti clienti
+  con referrer Google/Instagram → catena già sana in produzione.
+  **Loader NON modificato** (nessun commit su loader.js).
 - 2026-09-15 15:35 (chat BRIDGE): **BR3 — loader v4.4.0** (commit `37ba01d`).
   Inversione scrittura consenso pre-cutover (task REGIA, bloccante per U4):
   PRIMARIO = `api.cookiewx.com/consent` (keepalive); Wix
