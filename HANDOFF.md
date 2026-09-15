@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-15 10:10 (conversazione "BRIDGE" — guida embed clienti)
+Ultimo aggiornamento: 2026-09-15 10:50 (conversazione "BRIDGE" — decisione prodotto embed)
 
 ## Repo
 
@@ -48,6 +48,10 @@ Ultimo aggiornamento: 2026-09-15 10:10 (conversazione "BRIDGE" — guida embed c
 
 ## Ultime modifiche
 
+- 2026-09-15 10:50 (chat BRIDGE): `embed-guida.html` riallineato alla
+  decisione prodotto di Ugo — scanner = strumento marketing CookieWX/partner
+  (NON proposto ai clienti finali); sigillo = feature clienti, con nota sul
+  flusso semplice da dashboard (scansione automatica + snippet precompilato).
 - 2026-09-15 10:10 (chat BRIDGE): `embed-guida.html` NUOVO — pagina guida
   embed per clienti (BR1 piano REGIA): demo live dei 2 widget, snippet
   copiabili con bottone "Copia", istruzioni Wix/WordPress/HTML, tabella
