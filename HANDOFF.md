@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-15 22:20 (conversazione "BRIDGE" — BR4 referral verificato)
+Ultimo aggiornamento: 2026-09-16 02:45 (conversazione "BRIDGE" — BR6 loader v4.4.1)
 
 ## Repo
 
@@ -48,6 +48,14 @@ Ultimo aggiornamento: 2026-09-15 22:20 (conversazione "BRIDGE" — BR4 referral 
 
 ## Ultime modifiche
 
+- 2026-09-16 02:45 (chat BRIDGE): **BR6 — loader v4.4.1** (commit `3f46cfa`).
+  Task approvato da Ugo 2026-09-16 00:20 via REGIA: secondaria Wix SPENTA
+  (`CONSENT_URL_WIX = null`) — dal cutover U4 la rotta
+  `www.cookiewx.com/_functions/cookiewxConsent` rispondeva 405 a ogni
+  consenso. Blocco di invio lasciato inattivo dietro guard (riattivabile).
+  E2E live: demo.html → POST primario 200, zero chiamate Wix, D1 id=357;
+  www.cookiewx.com → POST primario 200, zero chiamate Wix, D1 id=358
+  (entrambe loader_version 4.4.1). I consensi vivono solo su D1.
 - 2026-09-15 22:20 (chat BRIDGE): **BR4 — referral VERIFICATO, nessun fix
   necessario.** Il loader ha SEMPRE inviato `referrer` nel payload consenso
   (pre-A7: `document.referrer || null`; da A7 v4.3.1: origin+pathname
