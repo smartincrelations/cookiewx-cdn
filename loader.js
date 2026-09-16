@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.4.0
+ * CookieWX Loader v4.4.1
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.4.0"; // [BR3] consenso: primario api.cookiewx.com, Wix best-effort con timeout (pre-cutover)
+  var VERSION = "4.4.1"; // [BR6] secondaria Wix spenta (CONSENT_URL_WIX=null): consensi solo su api.cookiewx.com/D1
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -59,10 +59,12 @@
     // [BR3 2026-09-15] Inversione pre-cutover: il PRIMARIO del consenso e'
     // il nuovo backend Cloudflare (api.cookiewx.com -> D1, vista dashboard).
     CONSENT_URL: "https://api.cookiewx.com/consent",
-    // Wix resta SOLO seconda scrittura best-effort finche' risponde: dopo il
-    // cutover DNS www non punta piu' a Wix e questa rotta muore da sola,
-    // senza errori visibili ne' rallentamenti (timeout duro lato client).
-    CONSENT_URL_WIX: "https://www.cookiewx.com/_functions/cookiewxConsent",
+    // [BR6 2026-09-16] v4.4.1: secondaria Wix SPENTA. Dopo il cutover U4
+    // www.cookiewx.com non e' piu' Wix e la rotta rispondeva 405 a ogni
+    // consenso (ignorata in silenzio, ma richiesta sprecata). I consensi
+    // vivono solo su D1. Il blocco di invio resta ma e' inattivo (guard
+    // su CONSENT_URL_WIX); riattivabile se mai servisse una seconda copia.
+    CONSENT_URL_WIX: null,
     WIX_TIMEOUT_MS: 4000
   };
 
