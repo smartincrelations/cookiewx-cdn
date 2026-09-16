@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-16 02:45 (conversazione "BRIDGE" — BR6 loader v4.4.1)
+Ultimo aggiornamento: 2026-09-16 13:30 (conversazione "BRIDGE" — BR7 loader v4.5.0 chiave sito)
 
 ## Repo
 
@@ -48,6 +48,19 @@ Ultimo aggiornamento: 2026-09-16 02:45 (conversazione "BRIDGE" — BR6 loader v4
 
 ## Ultime modifiche
 
+- 2026-09-16 13:30 (chat BRIDGE): **BR7 — loader v4.5.0** (commit `bc20c70`).
+  Chiave sito (task deciso da Ugo 12:17, backend = B11 BASTION): lettura da
+  `data-cookiewx-key` sullo script tag (preferita) o `?k=` nell'URL del
+  loader o override `window.COOKIEWX_SITE_KEY`; inviata come `k` nel payload
+  `/consent` e come `&k=` su `getRegole` e `/api/config`. **Cache config** in
+  localStorage (`cookiewxCfgCacheV1`, TTL 24h) con **fail-open** duro: cache
+  fresca → zero chiamate; scaduta → banner subito con ultima config valida +
+  ri-validazione in background (timeout 1s). Senza chiave: comportamento
+  identico a prima (grace legacy, decide il server). E2E live su
+  `test-br7.html`: attributo ✅, `?k=` ✅, payload consenso con k →
+  `/consent` 200 (D1 id=424, loader 4.5.0), cache fresca → nessuna chiamata
+  config + titolo banner da cache ✅, cache scaduta → fail-open +
+  ri-validazione con k ✅. Nota per BASTION in 📮 (contratto campo `k`).
 - 2026-09-16 02:45 (chat BRIDGE): **BR6 — loader v4.4.1** (commit `3f46cfa`).
   Task approvato da Ugo 2026-09-16 00:20 via REGIA: secondaria Wix SPENTA
   (`CONSENT_URL_WIX = null`) — dal cutover U4 la rotta
