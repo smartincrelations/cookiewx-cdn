@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.4.1
+ * CookieWX Loader v4.5.0
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.4.1"; // [BR6] secondaria Wix spenta (CONSENT_URL_WIX=null): consensi solo su api.cookiewx.com/D1
+  var VERSION = "4.5.0"; // [BR7] chiave sito (data-cookiewx-key / ?k=) inviata a consent+regole+config; cache config localStorage TTL 24h con fail-open 1s
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -169,6 +169,40 @@
   function safeString(value) {
     return String(value == null ? "" : value).trim();
   }
+
+  /* [BR7 2026-09-16 — v4.5] Chiave sito (legata ad account/abbonamento,
+   * backend B11). Letta dallo script tag con cui il loader e' installato:
+   * attributo data-cookiewx-key="cwx_..." (preferito) oppure parametro
+   * ?k= nell'URL del loader. Se assente: comportamento invariato (solo
+   * dominio) — sara' il server (B11) a decidere grace legacy o rifiuto.
+   * La chiave nello snippet e' pubblica per natura (come l'ID di Google
+   * Analytics): la sicurezza e' nel binding dominio + stato abbonamento.
+   * Override opzionale: window.COOKIEWX_SITE_KEY (test/integrazioni). */
+  var SITE_KEY = (function () {
+    try {
+      var forced = safeString(window.COOKIEWX_SITE_KEY);
+      if (forced) return forced;
+      var s = (typeof document !== "undefined") ? document.currentScript : null;
+      if (!s && typeof document !== "undefined") {
+        // async/defer: currentScript e' null — cerco lo script del loader
+        var all = document.getElementsByTagName("script");
+        for (var i = all.length - 1; i >= 0; i--) {
+          if (/loader\.js/.test((all[i] && all[i].src) || "")) { s = all[i]; break; }
+        }
+      }
+      if (!s) return "";
+      var k = safeString(s.getAttribute("data-cookiewx-key"));
+      if (!k) {
+        var m = /[?&]k=([^&#]+)/.exec(s.src || "");
+        k = m ? safeString(decodeURIComponent(m[1])) : "";
+      }
+      // sanity: lunghezza ragionevole, niente spazi/controsequenze
+      if (k && k.length <= 128 && !/[\s"'<>]/.test(k)) return k;
+      return "";
+    } catch (_) {
+      return "";
+    }
+  })();
 
   function lower(value) {
     return safeString(value).toLowerCase();
@@ -2900,23 +2934,74 @@ var vendor = findVendorByUrl(url);
     }
   }
 
+  /* [BR7 2026-09-16 — v4.5] Cache config in localStorage (TTL 24h) +
+   * fail-open duro: il controllo chiave lato server (B11) NON deve
+   * rallentare il banner. Cache fresca → zero chiamate; cache scaduta →
+   * il banner parte SUBITO con l'ultima config valida e la ri-validazione
+   * avviene in background con timeout 1s; rete giù → resta cache/default.
+   * Conseguenza accettata (Ugo): una sospensione si propaga in ~24h. */
+  var CFG_CACHE_KEY = "cookiewxCfgCacheV1";
+  var CFG_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+  var CFG_TIMEOUT_MS = 1000;
+
+  function readCfgCache(dominio) {
+    try {
+      var o = safeJsonParse(localStorage.getItem(CFG_CACHE_KEY), null);
+      if (!o || !o.cfg || o.dominio !== dominio) return null;
+      if (safeString(o.k) !== SITE_KEY) return null; // chiave cambiata: ricarica
+      return o;
+    } catch (_) {
+      return null;
+    }
+  }
+
   function pullConfigFromBackend() {
     if (!API) return; // nuovo backend non configurato: aspetto di default
     var dominio = bannerDominio();
     if (!dominio) return;
 
-    fetch(API.CONFIG + "?dominio=" + encodeURIComponent(dominio), {
+    var cached = readCfgCache(dominio);
+
+    // Cache fresca (< 24h): usa quella, nessuna chiamata di rete.
+    if (cached && (Date.now() - cached.ts) < CFG_CACHE_TTL_MS) {
+      log("CookieWX: config banner da cache (TTL 24h)");
+      applyBannerConfig(cached.cfg);
+      return;
+    }
+
+    // Cache scaduta: fail-open — applica subito l'ultima config valida,
+    // poi ri-valida in background con timeout duro.
+    if (cached) applyBannerConfig(cached.cfg);
+
+    var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
+    var timer = ctrl ? setTimeout(function () {
+      try { ctrl.abort(); } catch (_) {}
+    }, CFG_TIMEOUT_MS) : null;
+
+    fetch(API.CONFIG + "?dominio=" + encodeURIComponent(dominio) +
+        (SITE_KEY ? "&k=" + encodeURIComponent(SITE_KEY) : ""), {
       method: "GET",
-      credentials: "omit"
+      credentials: "omit",
+      signal: ctrl ? ctrl.signal : undefined
     }).then(function (r) {
+      if (timer) clearTimeout(timer);
       return r.ok ? r.json() : null; // 404 = nessuna config salvata: default
     }).then(function (cfg) {
       if (cfg) {
         log("CookieWX: config banner dal backend", cfg);
+        try {
+          localStorage.setItem(CFG_CACHE_KEY, JSON.stringify({
+            ts: Date.now(),
+            dominio: dominio,
+            k: SITE_KEY,
+            cfg: cfg
+          }));
+        } catch (_) {}
         applyBannerConfig(cfg);
       }
     }).catch(function () {
-      // backend irraggiungibile: resta l'aspetto di default
+      if (timer) clearTimeout(timer);
+      // fail-open: resta l'ultima config valida in cache (o il default)
     });
   }
 
@@ -3604,6 +3689,9 @@ var vendor = findVendorByUrl(url);
         loaderVersion: VERSION
       };
 
+      // [BR7] chiave sito, se lo snippet la dichiara (valida la server, B11)
+      if (SITE_KEY) payload.k = SITE_KEY;
+
       // Dev/demo: se COOKIEWX_API e' valorizzato, il consenso va al
       // backend indicato (e NON ai server di produzione).
       if (API) {
@@ -3825,7 +3913,8 @@ var vendor = findVendorByUrl(url);
     var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, 5000) : null;
 
-    fetch(RULES_BACKEND_URL + "?dominio=" + encodeURIComponent(dominio), {
+    fetch(RULES_BACKEND_URL + "?dominio=" + encodeURIComponent(dominio) +
+        (SITE_KEY ? "&k=" + encodeURIComponent(SITE_KEY) : ""), {
       method: "GET",
       credentials: "omit",
       signal: ctrl ? ctrl.signal : undefined

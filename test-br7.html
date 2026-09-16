@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CookieWX — Test BR7 (chiave sito v4.5)</title>
+
+<!-- ============================================================
+     TEST BR7 — chiave sito nel loader (2026-09-16, chat BRIDGE)
+     Verifica loader v4.5.0:
+     1) chiave letta da data-cookiewx-key (questa pagina) o ?k= nell'URL
+        del loader;
+     2) k inviata nel payload /consent e come parametro in getRegole e
+        /api/config;
+     3) cache config localStorage TTL 24h + fail-open 1s.
+     COOKIEWX_API punta al backend reale per esercitare la rotta config.
+     ============================================================ -->
+<script>
+  window.COOKIEWX_RULES_DOMAIN = "repubblica.it";
+  window.COOKIEWX_API = "https://api.cookiewx.com";
+</script>
+
+<!-- Loader con chiave sito via attributo (modalita' preferita) -->
+<script src="/loader.js" data-cookiewx-key="cwx_test_attributo"></script>
+
+<style>
+  body { font-family: system-ui, sans-serif; background:#f8fafc; color:#0f172a;
+         max-width: 720px; margin: 48px auto; padding: 0 16px 120px; }
+  h1 { font-size: 24px; }
+  .card { background:#fff; border:1px solid #e2e8f0; border-radius:12px;
+          padding:16px 20px; margin:16px 0; font-size:14px; line-height:1.6; }
+  code { background:#eef2ff; color:#4f46e5; padding:2px 6px; border-radius:6px; }
+  button { border:0; border-radius:10px; padding:10px 18px; font-weight:600;
+           cursor:pointer; margin-right:8px; }
+  .a { background:#4f46e5; color:#fff; }
+  .r { background:#e2e8f0; color:#334155; }
+  #out { background:#0f172a; color:#a5b4fc; border-radius:10px; padding:12px;
+         font:12px/1.5 monospace; white-space:pre-wrap; }
+</style>
+</head>
+<body>
+
+<h1>Test BR7 — chiave sito (loader v4.5)</h1>
+
+<div class="card">
+  <b>Cosa verificare (rete):</b><br>
+  1. <code>GET /getRegole?dominio=repubblica.it&k=cwx_test_attributo</code><br>
+  2. <code>GET /api/config?dominio=repubblica.it&k=cwx_test_attributo</code>
+     (404 atteso finché B11 non è live: tollerato)<br>
+  3. Click "Concedi" → <code>POST /api/consensi</code> con
+     <code>"k":"cwx_test_attributo"</code> nel body<br>
+  4. Cache: con <code>cookiewxCfgCacheV1</code> fresco in localStorage NON
+     parte nessuna chiamata /api/config e il titolo del banner diventa quello
+     in cache.
+</div>
+
+<div class="card">
+  <button class="a" onclick="grantAll()">✅ Concedi consenso</button>
+  <button class="r" onclick="resetTest()">↺ Reset</button>
+  <button class="r" onclick="showState()">Stato</button>
+</div>
+
+<div id="out">—</div>
+
+<script>
+function showState() {
+  document.getElementById("out").textContent = JSON.stringify({
+    cache: localStorage.getItem("cookiewxCfgCacheV1"),
+    consenso: localStorage.getItem("cookiewxConsenso")
+  });
+}
+function grantAll() {
+  if (window.CookieWX && window.CookieWX.applyConsent) {
+    window.CookieWX.applyConsent({ funzionali: true, statistici: true, marketing: true });
+  }
+  setTimeout(showState, 500);
+}
+function resetTest() {
+  try {
+    Object.keys(localStorage)
+      .filter(function (k) { return k.indexOf("cookiewx") === 0; })
+      .forEach(function (k) { localStorage.removeItem(k); });
+  } catch (e) {}
+  location.reload();
+}
+</script>
+
+</body>
+</html>
