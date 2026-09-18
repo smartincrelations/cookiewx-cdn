@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.5.0
+ * CookieWX Loader v4.5.1
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.5.0"; // [BR7] chiave sito (data-cookiewx-key / ?k=) inviata a consent+regole+config; cache config localStorage TTL 24h con fail-open 1s
+  var VERSION = "4.5.1"; // [BR8] fix banner: punto finale dentro al wrapper del link policy — niente piu' ". ." quando policyUrl e' vuota; link cliccabile quando B17 la fornisce
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -2668,7 +2668,10 @@ var vendor = findVendorByUrl(url);
           '<div class="cwx-banner-text">' +
             'Utilizziamo cookie essenziali per il funzionamento del sito. ' +
             'Con il tuo consenso possiamo usare anche cookie funzionali, statistici e marketing. ' +
-            '<a href="#" data-cwx-policy>Cookie e privacy policy</a>.' +
+            // [BR8] il punto finale sta DENTRO il wrapper del link: se il
+            // link e' nascosto (nessuna policyUrl) non resta punteggiatura
+            // orfana ("...marketing. .").
+            '<span data-cwx-policy-wrap><a href="#" data-cwx-policy>Cookie e privacy policy</a>.</span>' +
           '</div>' +
         '</div>' +
 
@@ -2879,7 +2882,7 @@ var vendor = findVendorByUrl(url);
       var x = banner.querySelector(".cwx-banner-text");
       if (x && cfg.testo) {
         x.innerHTML = escapeHtml(String(cfg.testo)) +
-          ' <a href="#" data-cwx-policy>Cookie e privacy policy</a>.';
+          ' <span data-cwx-policy-wrap><a href="#" data-cwx-policy>Cookie e privacy policy</a>.</span>';
         bindPolicyLink();
       }
       var pw = banner.querySelector(".cwx-powered-wrap");
@@ -3107,6 +3110,10 @@ var vendor = findVendorByUrl(url);
 
     if (!link) return;
 
+    // [BR8] il wrapper contiene link + punto finale: nascondendo lui non
+    // resta punteggiatura orfana quando manca la policyUrl.
+    var wrap = link.closest ? link.closest("[data-cwx-policy-wrap]") : null;
+
     var url = getPolicyUrl();
 
     if (url) {
@@ -3114,9 +3121,14 @@ var vendor = findVendorByUrl(url);
       link.target = "_blank";
       link.rel = "noopener";
       link.style.display = "";
+      if (wrap) wrap.style.display = "";
     } else {
       link.removeAttribute("href");
-      link.style.display = "none";
+      if (wrap) {
+        wrap.style.display = "none";
+      } else {
+        link.style.display = "none";
+      }
     }
   }
 
