@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-16 13:30 (conversazione "BRIDGE" — BR7 loader v4.5.0 chiave sito)
+Ultimo aggiornamento: 2026-09-18 23:40 (conversazione "BRIDGE" — BR8 loader v4.5.1 link policy)
 
 ## Repo
 
@@ -48,6 +48,15 @@ Ultimo aggiornamento: 2026-09-16 13:30 (conversazione "BRIDGE" — BR7 loader v4
 
 ## Ultime modifiche
 
+- 2026-09-18 23:40 (chat BRIDGE): **BR8 — loader v4.5.1** (commit `14b3afc`).
+  Bug segnalato da Ugo: banner con "…marketing. ." (punto orfano quando il
+  link policy è nascosto). Fix: punto dentro `<span data-cwx-policy-wrap>`,
+  `bindPolicyLink()` nasconde/mostra il wrapper intero. E2E: www.cookiewx.com
+  (policy_url da B17) → link cliccabile ✅; demo.html (policyUrl vuota) →
+  punto singolo, wrapper nascosto ✅. ⚠️ Nota: con B11 live, `demo.html` e
+  `test-br7.html` (regole `repubblica.it`, dominio non censito) prendono 403
+  `chiave_richiesta`/`chiave_sconosciuta` → demo scan-to-block senza regole:
+  in 📮 su STATO-PROGETTO per decisione REGIA/BASTION.
 - 2026-09-16 13:30 (chat BRIDGE): **BR7 — loader v4.5.0** (commit `bc20c70`).
   Chiave sito (task deciso da Ugo 12:17, backend = B11 BASTION): lettura da
   `data-cookiewx-key` sullo script tag (preferita) o `?k=` nell'URL del
