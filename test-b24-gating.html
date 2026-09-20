@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Test B24 — scenario A: gating (nessun traffico atteso)</title>
+<script>
+  window.CookieWX = { config: { rulesBackendSync: false } };
+  window.COOKIEWX_ANALYTICS_URL = "http://localhost:8924/collect";
+</script>
+<!-- NESSUNA chiave sito: anche forzando, il beacon non deve partire -->
+<script src="/loader.js"></script>
+</head>
+<body style="min-height:3000px;font-family:sans-serif">
+<h1>Test B24 — scenario A (gating)</h1>
+<script>
+  // Forzo l'attivazione: senza chiave sito il beacon deve restare spento
+  setTimeout(function () { window.CookieWX.analyticsControl(true, false); }, 400);
+  setTimeout(function () {
+    var b = document.querySelector('[data-cwx="accept"]');
+    if (b) b.click();
+  }, 1200);
+  setTimeout(function () { window.scrollTo(0, document.body.scrollHeight); }, 2000);
+</script>
+</body>
+</html>

@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<title>Test B24 — beacon Analytics (scenario B: attivo, consenso dato)</title>
+<script>
+  // Scenario B: beacon attivo (hook diagnostica), collect su server locale.
+  // Nessuna chiamata getRegole (regole spente): piloto il beacon a mano.
+  window.CookieWX = { config: { rulesBackendSync: false } };
+  window.COOKIEWX_ANALYTICS_URL = "http://localhost:8924/collect";
+</script>
+<script src="/loader.js" data-cookiewx-key="cwx_test_b24"></script>
+</head>
+<body style="min-height:4000px;font-family:sans-serif">
+<h1>Test B24 — scenario B</h1>
+<p>Pagina lunga per lo scroll tracking.</p>
+<button id="trk" data-cwx-track="cta-prova">CTA tracciata</button>
+<a id="ext" href="https://example.org/landing?x=1">Link esterno</a>
+<script>
+  // Attiva il beacon (in produzione lo fa getRegole con analytics:true)
+  setTimeout(function () { window.CookieWX.analyticsControl(true, false); }, 400);
+  // Click "Accetta tutto" sul banner -> consent accettato + pageview con v + perf
+  setTimeout(function () {
+    var b = document.querySelector('[data-cwx="accept"]');
+    if (b) b.click();
+  }, 1200);
+  // Scroll completo -> soglie 25/50/75/100
+  setTimeout(function () {
+    window.scrollTo(0, document.body.scrollHeight);
+    window.dispatchEvent(new Event("scroll")); // headless: forza il listener
+  }, 2000);
+  // Click tracciato + click link esterno (navigazione bloccata)
+  setTimeout(function () { document.getElementById("trk").click(); }, 2600);
+  setTimeout(function () {
+    var a = document.getElementById("ext");
+    a.addEventListener("click", function (e) { e.preventDefault(); });
+    a.click();
+  }, 3200);
+</script>
+</body>
+</html>

@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.5.1"; // [BR8] fix banner: punto finale dentro al wrapper del link policy — niente piu' ". ." quando policyUrl e' vuota; link cliccabile quando B17 la fornisce
+  var VERSION = "4.6.0"; // [B24] beacon Analytics add-on: batch sendBeacon su /api/analytics/collect, gating duro su getRegole analytics:true + chiave sito, Modalita' A (solo post-consenso) + hook Modalita' B (analyticsPre)
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -3011,6 +3011,8 @@ var vendor = findVendorByUrl(url);
   function showBanner() {
     if (document.getElementById(IDS.BANNER)) return;
 
+    anConsent("mostrato"); // [B24] telemetria CMP anonima (buffer se beacon non ancora attivo)
+
     function mount() {
       if (!document.body) {
         requestAnimationFrame(mount);
@@ -3668,6 +3670,12 @@ var vendor = findVendorByUrl(url);
       sendConsentToBackend(payload);
       applyConsent(payload.preferenze);
 
+      // [B24] telemetria CMP anonima per il tasso di consenso
+      anConsent(
+        tipo === "totale" ? "accettato" :
+        tipo === "ess-only" ? "rifiutato" : "personalizzato"
+      );
+
       log("CookieWX: consenso salvato", payload);
     } catch (e) {
       warn("CookieWX: saveConsent error", e);
@@ -3801,6 +3809,8 @@ var vendor = findVendorByUrl(url);
       deleteCookiesWithoutConsent();
       enforceIframeTeardown();
     }, 500);
+
+    anOnConsentChange(); // [B24] attiva pageview identificata + perf se statistici appena concessi
 
     log("CookieWX: consenso applicato", window.CookieWX.consent);
   }
@@ -3936,6 +3946,9 @@ var vendor = findVendorByUrl(url);
     }).then(function (regole) {
       rulesPullInFlight = false;
       if (!regole || !Array.isArray(regole.cookies)) return;
+      // [B24] il flag analytics va letto PRIMA del guard di versione di
+      // applyPulledRegole: attivare/disattivare l'add-on non cambia updatedAt
+      anSetEnabled(regole.analytics === true, regole.analyticsPre === true);
       applyPulledRegole(regole);
     }).catch(function (err) {
       rulesPullInFlight = false;
@@ -3955,6 +3968,336 @@ var vendor = findVendorByUrl(url);
 
 
   /* =========================================================
+   * CAP. 22c — B24 ANALYTICS BEACON (SCOUT 2026-09-20, v4.6.0)
+   * Beacon lato loader per l'add-on Analytics. Contratto con
+   * BASTION (📮 STATO-PROGETTO, voce B24): POST
+   * /api/analytics/collect con navigator.sendBeacon, batch ogni
+   * ~10s o a pagehide, max 50 eventi; il server risponde 204.
+   * Gating DURO: niente traffico se getRegole non dichiara
+   * analytics:true, e mai senza chiave sito (il server la
+   * richiede, P5). Il server scarta comunque se l'add-on e'
+   * spento: doppia protezione.
+   * Modalita' A (default): eventi SOLO con consenso statistici;
+   * ID anonimo casuale in sessionStorage, MAI cookie.
+   * Modalita' B (pre-consenso, futura): se getRegole esporra'
+   * analyticsPre:true, prima del consenso si invia SOLO la
+   * pageview con anon:true (niente v, niente storage on-device).
+   * Eventi consent (mostrato/accettato/rifiutato/personalizzato):
+   * SEMPRE anonimi (mai v/d/r) — servono al tasso di consenso
+   * aggregato, nessun dato identificativo.
+   * Privacy loader-side: mai querystring in p/r (gli UTM della
+   * pageview vengono letti dalla query ma la query non viaggia);
+   * exit_click manda solo l'host di destinazione.
+   * Override per test: CookieWX.config.analyticsForce (attiva il
+   * beacon anche senza flag server — il server scarta se l'add-on
+   * e' spento) e window.COOKIEWX_ANALYTICS_URL (endpoint diverso).
+   * ========================================================= */
+  var ANALYTICS_COLLECT_URL = safeString(window.COOKIEWX_ANALYTICS_URL) ||
+    "https://api.cookiewx.com/api/analytics/collect";
+  var AN_FLUSH_MS = 10000;
+  var AN_HEARTBEAT_MS = 30000;
+
+  var CWX_AN = {
+    on: false,
+    pre: false,
+    started: false,
+    q: [],
+    buffered: [],
+    vid: null,
+    pvSent: false,
+    perfSent: false,
+    shownSent: false,
+    scrollSent: {},
+    lastHb: 0
+  };
+
+  function anHasStatsConsent() {
+    try {
+      return !!(window.CookieWX && window.CookieWX.consent &&
+        window.CookieWX.consent.statistici);
+    } catch (_) { return false; }
+  }
+
+  function anDevice() {
+    try {
+      var w = window.innerWidth || 0;
+      if (w && w < 768) return "mobile";
+      if (w && w < 1024) return "tablet";
+      return "desktop";
+    } catch (_) { return ""; }
+  }
+
+  function anPath() {
+    // contratto B24: solo path, MAI querystring
+    try { return location.pathname || "/"; } catch (_) { return "/"; }
+  }
+
+  function anReferrer() {
+    try {
+      if (!document.referrer) return "";
+      var u = new URL(document.referrer);
+      return u.origin + u.pathname;
+    } catch (_) { return ""; }
+  }
+
+  function anUtm() {
+    try {
+      var q = new URLSearchParams(location.search || "");
+      var s = safeString(q.get("utm_source"));
+      var m = safeString(q.get("utm_medium"));
+      var c = safeString(q.get("utm_campaign"));
+      if (!s && !m && !c) return null;
+      return { s: s, m: m, c: c };
+    } catch (_) { return null; }
+  }
+
+  function anGetVid() {
+    // ID anonimo SOLO post-consenso (Modalita' A). sessionStorage, mai cookie.
+    if (!anHasStatsConsent()) return "";
+    if (CWX_AN.vid) return CWX_AN.vid;
+    try {
+      var v = sessionStorage.getItem("cookiewxAnVid") || "";
+      if (!v) {
+        v = "v" + Math.random().toString(36).slice(2, 12) + Date.now().toString(36);
+        sessionStorage.setItem("cookiewxAnVid", v);
+      }
+      CWX_AN.vid = v;
+    } catch (_) { CWX_AN.vid = ""; }
+    return CWX_AN.vid;
+  }
+
+  function anPush(ev) {
+    try {
+      CWX_AN.q.push(ev);
+      while (CWX_AN.q.length > 50) CWX_AN.q.shift();
+    } catch (_) {}
+  }
+
+  function anTrack(tipo, extra) {
+    if (!CWX_AN.on) return;
+    try {
+      extra = extra || {};
+      if (!anHasStatsConsent()) {
+        // pre-consenso: solo la pageview anonima di Modalita' B
+        if (CWX_AN.pre && tipo === "pageview") {
+          anPush({ t: "pageview", anon: true, p: anPath(), d: anDevice(), r: anReferrer() });
+        }
+        return;
+      }
+      var ev = { t: tipo, p: anPath() };
+      var v = anGetVid();
+      if (v) ev.v = v;
+      ev.d = anDevice();
+      if (tipo === "pageview") {
+        ev.r = anReferrer();
+        var utm = anUtm();
+        if (utm) ev.utm = utm;
+      } else if (tipo === "heartbeat") {
+        ev.sec = Math.max(1, Math.min(600, Math.round(extra.sec || 0)));
+      } else if (tipo === "exit_click") {
+        ev.dest = safeString(extra.dest);
+        if (!ev.dest) return;
+      } else if (tipo === "click") {
+        ev.label = safeString(extra.label).slice(0, 120);
+        if (!ev.label) return;
+      } else if (tipo === "scroll") {
+        ev.s = extra.s;
+      } else if (tipo === "perf") {
+        ev.ms = Math.max(0, Math.round(extra.ms || 0));
+      }
+      anPush(ev);
+    } catch (_) {}
+  }
+
+  function anConsent(azione) {
+    // Telemetria CMP anonima: buffer breve se getRegole non e' ancora
+    // tornato (il banner si mostra al boot, prima della risposta).
+    if (azione === "mostrato") {
+      if (CWX_AN.shownSent) return;
+      CWX_AN.shownSent = true;
+    }
+    var ev = { t: "consent", a: azione };
+    if (!CWX_AN.on) {
+      try {
+        CWX_AN.buffered.push(ev);
+        if (CWX_AN.buffered.length > 5) CWX_AN.buffered.shift();
+      } catch (_) {}
+      return;
+    }
+    anPush(ev);
+  }
+
+  function anFlush() {
+    if (!CWX_AN.on || !CWX_AN.q.length) return;
+    var batch = CWX_AN.q.splice(0, 50);
+    var body;
+    try {
+      body = JSON.stringify({ k: SITE_KEY, dominio: bannerDominio(), eventi: batch });
+    } catch (_) { return; }
+    var sent = false;
+    try {
+      if (navigator.sendBeacon) {
+        sent = navigator.sendBeacon(
+          ANALYTICS_COLLECT_URL,
+          new Blob([body], { type: "application/json" })
+        );
+      }
+    } catch (_) { sent = false; }
+    if (!sent) {
+      try {
+        fetch(ANALYTICS_COLLECT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: body,
+          credentials: "omit",
+          keepalive: true
+        }).catch(function () {});
+      } catch (_) {}
+    }
+  }
+
+  function anMaybePageview() {
+    if (!CWX_AN.on || CWX_AN.pvSent) return;
+    if (anHasStatsConsent() || CWX_AN.pre) {
+      CWX_AN.pvSent = true;
+      anTrack("pageview");
+    }
+  }
+
+  function anMaybePerf() {
+    if (!CWX_AN.on || CWX_AN.perfSent) return;
+    if (!anHasStatsConsent()) return;
+    try {
+      if (document.readyState !== "complete") return;
+      CWX_AN.perfSent = true;
+      var ms = (window.performance && performance.now) ? performance.now() : 0;
+      anTrack("perf", { ms: ms });
+    } catch (_) {}
+  }
+
+  function anOnConsentChange() {
+    // chiamato da applyConsent: se gli statistici sono appena stati
+    // accettati partono pageview identificata e perf (Modalita' A).
+    if (!CWX_AN.on) return;
+    anMaybePageview();
+    anMaybePerf();
+  }
+
+  function anSetEnabled(flag, preFlag) {
+    var cfg = (window.CookieWX && window.CookieWX.config) || {};
+    var want = !!(flag || cfg.analyticsForce);
+    CWX_AN.pre = !!preFlag || !!cfg.analyticsPreConsent;
+    if (!want || !SITE_KEY) {
+      if (CWX_AN.on) {
+        CWX_AN.on = false;
+        CWX_AN.q = [];
+        log("CookieWX: analytics beacon disattivato");
+      }
+      return;
+    }
+    if (CWX_AN.on) return;
+    CWX_AN.on = true;
+    log("CookieWX: analytics beacon attivo (loader v" + VERSION + ")");
+    // replay eventi consent bufferizzati prima dell'attivazione
+    while (CWX_AN.buffered.length) {
+      anPush(CWX_AN.buffered.shift());
+    }
+    anStart();
+    anMaybePageview();
+    anMaybePerf();
+    anFlush();
+  }
+
+  function anStart() {
+    if (CWX_AN.started) return;
+    CWX_AN.started = true;
+    CWX_AN.lastHb = Date.now();
+
+    setInterval(anFlush, AN_FLUSH_MS);
+
+    setInterval(function () {
+      if (!CWX_AN.on) { CWX_AN.lastHb = Date.now(); return; }
+      var now = Date.now();
+      var sec = Math.round((now - CWX_AN.lastHb) / 1000);
+      CWX_AN.lastHb = now;
+      if (!anHasStatsConsent()) return;
+      try {
+        if (document.visibilityState === "hidden") return;
+      } catch (_) {}
+      if (sec >= 1) anTrack("heartbeat", { sec: sec });
+    }, AN_HEARTBEAT_MS);
+
+    // flush di fine pagina / tab in background
+    try {
+      window.addEventListener("pagehide", anFlush);
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "hidden") anFlush();
+      });
+    } catch (_) {}
+
+    // scroll 25/50/75/100 (una sola volta ciascuno per pagina)
+    var scrollTick = false;
+    function onAnScroll() {
+      if (scrollTick) return;
+      scrollTick = true;
+      setTimeout(function () {
+        scrollTick = false;
+        if (!CWX_AN.on || !anHasStatsConsent()) return;
+        try {
+          var doc = document.documentElement;
+          var total = (doc.scrollHeight || 0) - (window.innerHeight || 0);
+          if (total <= 0) return;
+          var pct = Math.min(100, Math.round(((window.scrollY || doc.scrollTop || 0) / total) * 100));
+          var soglie = [25, 50, 75, 100];
+          for (var i = 0; i < soglie.length; i++) {
+            var s = soglie[i];
+            if (pct >= s && !CWX_AN.scrollSent[s]) {
+              CWX_AN.scrollSent[s] = true;
+              anTrack("scroll", { s: s });
+            }
+          }
+        } catch (_) {}
+      }, 150);
+    }
+    try {
+      window.addEventListener("scroll", onAnScroll, { passive: true });
+    } catch (_) {
+      window.addEventListener("scroll", onAnScroll);
+    }
+
+    // click delegato: [data-cwx-track] -> label; link esterno -> exit_click
+    try {
+      document.addEventListener("click", function (e) {
+        if (!CWX_AN.on || !anHasStatsConsent()) return;
+        try {
+          var t = e.target;
+          var tracked = t && t.closest ? t.closest("[data-cwx-track]") : null;
+          if (tracked) {
+            anTrack("click", { label: tracked.getAttribute("data-cwx-track") });
+            return;
+          }
+          var a = t && t.closest ? t.closest("a[href]") : null;
+          if (!a) return;
+          var href = safeString(a.getAttribute("href"));
+          if (!href || href.charAt(0) === "#") return;
+          var u = new URL(href, location.href);
+          if (u.hostname && u.hostname !== location.hostname) {
+            anTrack("exit_click", { dest: u.hostname });
+          }
+        } catch (_) {}
+      }, true);
+    } catch (_) {}
+
+    // perf a caricamento completo
+    try {
+      window.addEventListener("load", function () {
+        setTimeout(anMaybePerf, 0);
+      });
+    } catch (_) {}
+  }
+
+
+  /* =========================================================
    * CAP. 23 — API PUBBLICA
    * ========================================================= */
 
@@ -3966,6 +4309,10 @@ var vendor = findVendorByUrl(url);
   window.CookieWX.resolveResource = resolveResource;
     window.CookieWX.telemetry = CWX_TELEMETRY;
   window.CookieWX.publishTelemetrySnapshot = publishTelemetrySnapshot;
+  // [B24] hook diagnostica/test (SENTINEL, PALCO): attiva/ferma il beacon
+  // a mano — in produzione lo pilota getRegole (analytics:true). Il server
+  // scarta comunque gli eventi se l'add-on e' spento.
+  window.CookieWX.analyticsControl = anSetEnabled;
 
   window.CookieWX.track = function (category, payload) {
     try {
