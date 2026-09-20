@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-18 23:40 (conversazione "BRIDGE" — BR8 loader v4.5.1 link policy)
+Ultimo aggiornamento: 2026-09-20 22:40 (conversazione "SCOUT" — B24 loader v4.6.0 beacon Analytics)
 
 ## Repo
 
@@ -48,6 +48,27 @@ Ultimo aggiornamento: 2026-09-18 23:40 (conversazione "BRIDGE" — BR8 loader v4
 
 ## Ultime modifiche
 
+- 2026-09-20 22:40 (chat SCOUT): **B24 — loader v4.6.0** (commit `30b8c4d`).
+  Beacon Analytics add-on (📮 contratto BASTION su STATO-PROGETTO): batch
+  `sendBeacon` su `api.cookiewx.com/api/analytics/collect` ogni 10s e a
+  pagehide/visibilitychange, max 50 eventi. Gating duro: si attiva SOLO se
+  `getRegole` dichiara `analytics:true` (letto PRIMA del guard di versione
+  di `applyPulledRegole`) **e** c'è la chiave sito. Modalità A (default):
+  eventi solo con consenso statistici, ID anonimo in sessionStorage
+  (`cookiewxAnVid`), mai cookie. Modalità B pronta: se getRegole esporrà
+  `analyticsPre:true`, pre-consenso solo pageview `anon:true`. Eventi:
+  pageview/heartbeat(30s, solo tab visibile)/exit_click/click
+  (`data-cwx-track`)/scroll 25-50-75-100/perf + consent
+  (mostrato/accettato/rifiutato/personalizzato, SEMPRE anonimi, buffer se
+  getRegole non è ancora tornato). Privacy: mai querystring in p/r, UTM
+  solo come campi s/m/c, exit_click solo host. Hook diagnostica:
+  `CookieWX.analyticsControl(flag, pre)` (per test SENTINEL/PALCO; il
+  server scarta comunque se l'add-on è spento). ⚠️ Nota rollout: siti con
+  snippet SENZA `data-cookiewx-key` (grace legacy, es. latinaebusiness.it)
+  non manderanno mai beacon — la chiave nello snippet è obbligatoria.
+  E2E locale (`test-b24-server.py` + Chrome headless): scenario attivo →
+  7/7 tipi evento + 4 soglie scroll ✅; scenario gating senza chiave →
+  zero traffico ✅. Live: CDN serve v4.6.0 ✅.
 - 2026-09-18 23:40 (chat BRIDGE): **BR8 — loader v4.5.1** (commit `14b3afc`).
   Bug segnalato da Ugo: banner con "…marketing. ." (punto orfano quando il
   link policy è nascosto). Fix: punto dentro `<span data-cwx-policy-wrap>`,
