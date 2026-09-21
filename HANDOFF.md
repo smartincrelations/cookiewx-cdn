@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-20 22:40 (conversazione "SCOUT" — B24 loader v4.6.0 beacon Analytics)
+Ultimo aggiornamento: 2026-09-21 23:25 (conversazione "SCOUT" — S8 diagnosi beacon + loader v4.6.1)
 
 ## Repo
 
@@ -48,6 +48,19 @@ Ultimo aggiornamento: 2026-09-20 22:40 (conversazione "SCOUT" — B24 loader v4.
 
 ## Ultime modifiche
 
+- 2026-09-21 23:25 (chat SCOUT): **S8 — diagnosi "beacon non parte" + loader
+  v4.6.1** (commit `ffd6345` + header `55ed42a`). Esito: **il beacon è SANO** —
+  riprodotto live su smartincrelations.it (loader v4.6.0, chiave presente,
+  getRegole analytics:true): POST collect a boot (consent mostrato), dopo
+  click Accetta (accettato + pageview con v + perf) e al reload con consenso
+  salvato (pageview identificata al boot). Causa più probabile del "zero" di
+  Ugo (21/09 22:51): **loader.js vecchia in cache** — `cdn.cookiewx.com`
+  serve con `Cache-Control: max-age=14400` (Pages manda `max-age=0`) e dopo
+  il push di v4.6.1 ho visto con i miei occhi un edge node servire ancora la
+  versione precedente per ~1 min. Hardening v4.6.1: `anSetEnabled` chiamato
+  PRIMA di ogni guard di getRegole (anche risposte parziali senza array
+  cookies). 📮 a REGIA/BASTION: valutare purge cache su deploy o TTL più
+  corto su cdn.cookiewx.com.
 - 2026-09-20 22:40 (chat SCOUT): **B24 — loader v4.6.0** (commit `30b8c4d`).
   Beacon Analytics add-on (📮 contratto BASTION su STATO-PROGETTO): batch
   `sendBeacon` su `api.cookiewx.com/api/analytics/collect` ogni 10s e a
