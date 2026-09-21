@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.6.0"; // [B24] beacon Analytics add-on: batch sendBeacon su /api/analytics/collect, gating duro su getRegole analytics:true + chiave sito, Modalita' A (solo post-consenso) + hook Modalita' B (analyticsPre)
+  var VERSION = "4.6.1"; // [S8] hardening arming beacon: flag analytics letto prima di OGNI guard di getRegole (risposte parziali incluse)
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -3945,10 +3945,13 @@ var vendor = findVendorByUrl(url);
       return r.ok ? r.json() : null;
     }).then(function (regole) {
       rulesPullInFlight = false;
+      // [B24+S8] il flag analytics va letto PRIMA di OGNI guard: ne' il
+      // guard di versione di applyPulledRegole ne' risposte parziali
+      // (senza array cookies) devono impedire arming/disarming del beacon
+      if (regole && typeof regole === "object") {
+        anSetEnabled(regole.analytics === true, regole.analyticsPre === true);
+      }
       if (!regole || !Array.isArray(regole.cookies)) return;
-      // [B24] il flag analytics va letto PRIMA del guard di versione di
-      // applyPulledRegole: attivare/disattivare l'add-on non cambia updatedAt
-      anSetEnabled(regole.analytics === true, regole.analyticsPre === true);
       applyPulledRegole(regole);
     }).catch(function (err) {
       rulesPullInFlight = false;
