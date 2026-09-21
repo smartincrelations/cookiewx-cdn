@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.5.1
+ * CookieWX Loader v4.6.1
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
