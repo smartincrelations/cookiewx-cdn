@@ -1,0 +1,8 @@
+# cookiewx-cdn — headers Cloudflare Pages
+#
+# loader.js NON e' versionato nell'URL: con TTL 4h ogni fix impiegava ore
+# a propagarsi (caso S8 del 21/09: beacon "morto" = loader vecchio in
+# cache edge/browser). GO REGIA 2026-09-22 09:25: TTL 900 (15 min).
+# La purge selettiva via API token resta rinviata (token: Ugo).
+/loader.js
+  Cache-Control: public, max-age=900, must-revalidate
