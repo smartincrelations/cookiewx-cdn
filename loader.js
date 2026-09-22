@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.6.1"; // [S8] hardening arming beacon: flag analytics letto prima di OGNI guard di getRegole (risposte parziali incluse)
+  var VERSION = "4.6.2"; // [S13+S12] API_BASE default produzione (config banner mai scaricata) + TTL cache config 24h→5min
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -70,22 +70,28 @@
 
   /* =========================================================
    * NUOVO BACKEND (v4.3) — opzionale, con fallback.
-   * Se window.COOKIEWX_API (o CookieWX.config.apiBase) e' valorizzato,
-   * il loader usa il nuovo backend per regole, config banner e consensi.
-   * Se non e' configurato o non risponde, tutto resta come prima:
-   * endpoint Wix legacy + aspetto banner di default.
+   * [S13 2026-09-22 — v4.6.2] DEFAULT produzione: se window.COOKIEWX_API
+   * (o CookieWX.config.apiBase) NON e' valorizzato, API_BASE punta a
+   * https://api.cookiewx.com. Prima del fix il default era "" → API null
+   * → pullConfigFromBackend() non partiva MAI sui siti reali (nessuno
+   * snippet dichiara l'override) e "Personalizza banner" restava muto.
+   * L'override da window resta possibile per dev/demo.
    * ========================================================= */
   var API_BASE = String(
     (window.CookieWX && window.CookieWX.config && window.CookieWX.config.apiBase) ||
     window.COOKIEWX_API ||
-    ""
+    "https://api.cookiewx.com"
   ).replace(/\/+$/, "");
 
   var API = API_BASE
     ? {
         REGOLE: API_BASE + "/api/regole",
         CONFIG: API_BASE + "/api/config",
-        CONSENSI: API_BASE + "/api/consensi"
+        // [S13] la produzione espone POST /consent (NON /api/consensi,
+        // che era l'endpoint dell'Express dev): con il default di API_BASE
+        // questo ramo diventa il percorso PRIMARIO del consenso — un 404
+        // qui avrebbe spento la raccolta consensi su tutti i siti.
+        CONSENSI: API_BASE + "/consent"
       }
     : null;
 
@@ -2937,14 +2943,17 @@ var vendor = findVendorByUrl(url);
     }
   }
 
-  /* [BR7 2026-09-16 — v4.5] Cache config in localStorage (TTL 24h) +
-   * fail-open duro: il controllo chiave lato server (B11) NON deve
-   * rallentare il banner. Cache fresca → zero chiamate; cache scaduta →
-   * il banner parte SUBITO con l'ultima config valida e la ri-validazione
-   * avviene in background con timeout 1s; rete giù → resta cache/default.
-   * Conseguenza accettata (Ugo): una sospensione si propaga in ~24h. */
+  /* [BR7 2026-09-16 — v4.5] Cache config in localStorage + fail-open
+   * duro: il controllo chiave lato server (B11) NON deve rallentare il
+   * banner. Cache fresca → zero chiamate; cache scaduta → il banner parte
+   * SUBITO con l'ultima config valida e la ri-validazione avviene in
+   * background con timeout 1s; rete giù → resta cache/default.
+   * [S12 2026-09-22 — v4.6.2] TTL 24h → 5 minuti: un cliente non deve
+   * aspettare un giorno per vedere le proprie modifiche banner. Ora e'
+   * stale-while-revalidate vero: max 5 min di cache, poi ri-valida in
+   * background applicando subito la cache (fail-open invariato). */
   var CFG_CACHE_KEY = "cookiewxCfgCacheV1";
-  var CFG_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+  var CFG_CACHE_TTL_MS = 5 * 60 * 1000;
   var CFG_TIMEOUT_MS = 1000;
 
   function readCfgCache(dominio) {
@@ -2965,9 +2974,9 @@ var vendor = findVendorByUrl(url);
 
     var cached = readCfgCache(dominio);
 
-    // Cache fresca (< 24h): usa quella, nessuna chiamata di rete.
+    // Cache fresca (< 5 min): usa quella, nessuna chiamata di rete.
     if (cached && (Date.now() - cached.ts) < CFG_CACHE_TTL_MS) {
-      log("CookieWX: config banner da cache (TTL 24h)");
+      log("CookieWX: config banner da cache (TTL 5min)");
       applyBannerConfig(cached.cfg);
       return;
     }
