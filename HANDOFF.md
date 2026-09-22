@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-21 23:25 (conversazione "SCOUT" — S8 diagnosi beacon + loader v4.6.1)
+Ultimo aggiornamento: 2026-09-22 16:40 (conversazione "BASTION" — _headers TTL loader 900)
 
 ## Repo
 
@@ -48,6 +48,13 @@ Ultimo aggiornamento: 2026-09-21 23:25 (conversazione "SCOUT" — S8 diagnosi be
 
 ## Ultime modifiche
 
+- 2026-09-22 16:35 (chat BASTION): **_headers con TTL 900 su loader.js**
+  (GO REGIA 22/09 09:25, thread S8). `Cache-Control: public,
+  max-age=900, must-revalidate` — su cookiewx-cdn.pages.dev gia' live e
+  verificato. ⚠️ Sul dominio custom `cdn.cookiewx.com` resta 14400: una
+  **cache rule di zona** (dashboard Cloudflare) sovrascrive l'origine —
+  prova: fetch fresco (cf-cache MISS) con `_headers` attivo risponde
+  comunque 14400. Serve togliere/allineare quella rule (📮 a REGIA).
 - 2026-09-21 23:25 (chat SCOUT): **S8 — diagnosi "beacon non parte" + loader
   v4.6.1** (commit `ffd6345` + header `55ed42a`). Esito: **il beacon è SANO** —
   riprodotto live su smartincrelations.it (loader v4.6.0, chiave presente,
