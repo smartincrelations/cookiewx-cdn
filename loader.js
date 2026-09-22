@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.6.2"; // [S13+S12] API_BASE default produzione (config banner mai scaricata) + TTL cache config 24h→5min
+  var VERSION = "4.7.0"; // [S14] no flash tema default: SWR sempre (cache applicata pre-render) + primo paint attende /api/config max 500ms
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -2948,13 +2948,21 @@ var vendor = findVendorByUrl(url);
    * banner. Cache fresca → zero chiamate; cache scaduta → il banner parte
    * SUBITO con l'ultima config valida e la ri-validazione avviene in
    * background con timeout 1s; rete giù → resta cache/default.
-   * [S12 2026-09-22 — v4.6.2] TTL 24h → 5 minuti: un cliente non deve
-   * aspettare un giorno per vedere le proprie modifiche banner. Ora e'
-   * stale-while-revalidate vero: max 5 min di cache, poi ri-valida in
-   * background applicando subito la cache (fail-open invariato). */
+   * [S12 2026-09-22 — v4.6.2] TTL 24h → 5 minuti.
+   * [S14 2026-09-22 — v4.7.0] NO FLASH del tema default:
+   * stale-while-revalidate SEMPRE — qualsiasi config in cache (di
+   * qualsiasi eta') e' applicata PRIMA del primo render e ri-validata in
+   * background a ogni caricamento (il TTL non serve piu': la cache non e'
+   * mai la fonte "finale" di una visita). Primo visitatore senza cache:
+   * la fetch parte al parse dello script e il primo paint del banner
+   * attende la risposta max CFG_FIRST_PAINT_TIMEOUT_MS, poi fail-open
+   * col default (il banner non resta MAI nascosto). */
   var CFG_CACHE_KEY = "cookiewxCfgCacheV1";
-  var CFG_CACHE_TTL_MS = 5 * 60 * 1000;
   var CFG_TIMEOUT_MS = 1000;
+  var CFG_FIRST_PAINT_TIMEOUT_MS = 500;
+  // Promise del primo fetch config (solo visitatore senza cache):
+  // showBanner ne attende la risoluzione prima del primo paint.
+  var cfgFirstPaintReady = null;
 
   function readCfgCache(dominio) {
     try {
@@ -2967,24 +2975,7 @@ var vendor = findVendorByUrl(url);
     }
   }
 
-  function pullConfigFromBackend() {
-    if (!API) return; // nuovo backend non configurato: aspetto di default
-    var dominio = bannerDominio();
-    if (!dominio) return;
-
-    var cached = readCfgCache(dominio);
-
-    // Cache fresca (< 5 min): usa quella, nessuna chiamata di rete.
-    if (cached && (Date.now() - cached.ts) < CFG_CACHE_TTL_MS) {
-      log("CookieWX: config banner da cache (TTL 5min)");
-      applyBannerConfig(cached.cfg);
-      return;
-    }
-
-    // Cache scaduta: fail-open — applica subito l'ultima config valida,
-    // poi ri-valida in background con timeout duro.
-    if (cached) applyBannerConfig(cached.cfg);
-
+  function fetchBannerConfig(dominio, onDone) {
     var ctrl = (typeof AbortController !== "undefined") ? new AbortController() : null;
     var timer = ctrl ? setTimeout(function () {
       try { ctrl.abort(); } catch (_) {}
@@ -3011,9 +3002,44 @@ var vendor = findVendorByUrl(url);
         } catch (_) {}
         applyBannerConfig(cfg);
       }
+      if (onDone) onDone();
     }).catch(function () {
       if (timer) clearTimeout(timer);
       // fail-open: resta l'ultima config valida in cache (o il default)
+      if (onDone) onDone();
+    });
+  }
+
+  function pullConfigFromBackend() {
+    if (!API) return; // nuovo backend non configurato: aspetto di default
+    var dominio = bannerDominio();
+    if (!dominio) return;
+
+    var cached = readCfgCache(dominio);
+
+    // [S14①] SWR SEMPRE: cache di qualsiasi eta' applicata SUBITO (in
+    // boot questa funzione e' chiamata PRIMA di applyFromStorage/showBanner,
+    // quindi il primo paint nasce gia' con la config), poi ri-validazione
+    // in background a ogni caricamento.
+    if (cached) {
+      log("CookieWX: config banner da cache (SWR)");
+      applyBannerConfig(cached.cfg);
+      fetchBannerConfig(dominio, null);
+      return;
+    }
+
+    // [S14②] primo visitatore senza cache: la fetch parte ORA (parse
+    // dello script); showBanner ritarda il primo paint fino alla
+    // risposta, con timeout duro poi fail-open col default.
+    cfgFirstPaintReady = new Promise(function (resolve) {
+      var settled = false;
+      function fin() {
+        if (settled) return;
+        settled = true;
+        resolve();
+      }
+      setTimeout(fin, CFG_FIRST_PAINT_TIMEOUT_MS);
+      fetchBannerConfig(dominio, fin);
     });
   }
 
@@ -3045,6 +3071,15 @@ var vendor = findVendorByUrl(url);
       requestAnimationFrame(function () {
         banner.classList.add("cwx-banner-show");
       });
+    }
+
+    // [S14②] visitatore senza cache: la config e' in arrivo — il primo
+    // paint attende la risposta (max CFG_FIRST_PAINT_TIMEOUT_MS, vedi
+    // pullConfigFromBackend) per non mostrare mai il tema default.
+    // Risolta o scaduta che sia, il banner si monta comunque.
+    if (cfgFirstPaintReady) {
+      cfgFirstPaintReady.then(function () { mount(); });
+      return;
     }
 
     mount();
@@ -4475,9 +4510,12 @@ var vendor = findVendorByUrl(url);
       });
     } catch (_) {}
 
+    // [S14] pullConfig PRIMA di applyFromStorage: la config in cache e'
+    // applicata prima del primo render; senza cache la fetch parte qui
+    // (parse dello script) e showBanner attende max 500ms.
+    pullConfigFromBackend();
     applyFromStorage();
     scanNow();
-    pullConfigFromBackend(); // config banner dal nuovo backend (se COOKIEWX_API configurato)
     startRulesBackendPull();
 
     setTimeout(function () {
