@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Test S15 — dominio senza regole (fail onesto)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Loader senza chiave e senza override: getRegole risponde 403 per
+     cookiewx-cdn.pages.dev → il banner deve nascere con testo NEUTRO
+     (mai "funzionali, statistici e marketing" inventati). -->
+<script src="/loader.js" async></script>
+</head>
+<body>
+<h1>Test S15</h1>
+<p>Dominio senza regole nel backend: il banner deve mostrare il testo
+neutro ("Questo sito utilizza cookie e tecnologie simili…") e mai il
+testo di default con le categorie.</p>
+</body>
+</html>
