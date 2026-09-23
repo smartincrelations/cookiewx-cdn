@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.5"; // [S20 2026-09-23] logo powered-by + icona preferenze self-hosted: WebP 72x72 su cdn.cookiewx.com/assets/ (era PNG Wix 733 KB a oggetto su ogni sito cliente); [S19] cache loader max-age=3600 + SWR 24h via _headers CDN
+  var VERSION = "4.7.6"; // [S21 2026-09-23] link "Cookie Policy" nel footer del pannello Gestisci preferenze: policyUrl da config B35, nascosto se assente, colore primario config, bindPolicyLink generalizzato (banner + preferenze)
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -3049,6 +3049,9 @@ var vendor = findVendorByUrl(url);
     if (col) {
       css += '#cookiewx-banner button[data-cwx="accept"]{background:' + col + ' !important;}';
       css += '#cookiewx-banner button[data-cwx="prefs"]{background:' + col + '1A !important;color:' + col + ' !important;}';
+      // [S21] anche il link Cookie Policy nel pannello preferenze segue
+      // il colore primario della config banner
+      css += '#cookiewx-preferences .cwx-prefs-policy{color:' + col + ' !important;}';
     }
     if (cfg.tema === "scuro") {
       css += "#cookiewx-banner{background:#171720 !important;}";
@@ -3306,28 +3309,36 @@ var vendor = findVendorByUrl(url);
   }
 
   function bindPolicyLink() {
-    var link = document.querySelector("[data-cwx-policy]");
+    // [S21 2026-09-23 — v4.7.6] vale sia per il link nel banner
+    // (data-cwx-policy) sia per il link "Cookie Policy" nel footer del
+    // pannello preferenze (data-cwx-policy-prefs): stessa sorgente
+    // policyUrl (config B35), stessa regola "nessun URL -> link nascosto".
+    var links = document.querySelectorAll("[data-cwx-policy], [data-cwx-policy-prefs]");
 
-    if (!link) return;
-
-    // [BR8] il wrapper contiene link + punto finale: nascondendo lui non
-    // resta punteggiatura orfana quando manca la policyUrl.
-    var wrap = link.closest ? link.closest("[data-cwx-policy-wrap]") : null;
+    if (!links.length) return;
 
     var url = getPolicyUrl();
 
-    if (url) {
-      link.href = url;
-      link.target = "_blank";
-      link.rel = "noopener";
-      link.style.display = "";
-      if (wrap) wrap.style.display = "";
-    } else {
-      link.removeAttribute("href");
-      if (wrap) {
-        wrap.style.display = "none";
+    for (var i = 0; i < links.length; i++) {
+      var link = links[i];
+
+      // [BR8] il wrapper contiene link + punto finale: nascondendo lui non
+      // resta punteggiatura orfana quando manca la policyUrl.
+      var wrap = link.closest ? link.closest("[data-cwx-policy-wrap]") : null;
+
+      if (url) {
+        link.href = url;
+        link.target = "_blank";
+        link.rel = "noopener";
+        link.style.display = "";
+        if (wrap) wrap.style.display = "";
       } else {
-        link.style.display = "none";
+        link.removeAttribute("href");
+        if (wrap) {
+          wrap.style.display = "none";
+        } else {
+          link.style.display = "none";
+        }
       }
     }
   }
@@ -3398,6 +3409,9 @@ var vendor = findVendorByUrl(url);
         ) +
 
         '<div class="cwx-prefs-footer">' +
+          // [S21] link Cookie Policy nel secondo livello: bindPolicyLink()
+          // gli assegna la policyUrl della config e lo nasconde se assente
+          '<a href="#" data-cwx-policy-prefs class="cwx-prefs-policy">Cookie Policy</a>' +
           '<button type="button" data-cwx-pref-action="cancel">Annulla</button>' +
           '<button type="button" data-cwx-pref-action="save">Salva preferenze</button>' +
         '</div>' +
@@ -3532,6 +3546,19 @@ var vendor = findVendorByUrl(url);
         margin-top: 26px;
       }
 
+      /* [S21] link Cookie Policy: a sinistra nel footer, i bottoni restano
+         a destra; il colore primario della config lo sovrascrive (v.
+         applyBannerConfig) */
+      #cookiewx-preferences .cwx-prefs-policy {
+        margin-right: auto;
+        align-self: center;
+        font-size: 13px;
+        font-weight: 600;
+        color: #111;
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+
       #cookiewx-preferences button {
         font-size: 14px;
         padding: 10px 16px;
@@ -3599,6 +3626,10 @@ var vendor = findVendorByUrl(url);
       wrap.innerHTML = CWX_PREFERENCES_HTML;
 
       document.body.appendChild(wrap.firstElementChild);
+
+      // [S21] assegna la policyUrl (o nasconde) il link Cookie Policy
+      // appena montato nel footer del pannello
+      bindPolicyLink();
 
       var existing = readConsentFromStorage();
 
