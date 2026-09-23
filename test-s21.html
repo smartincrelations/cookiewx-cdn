@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Test S21 — link Cookie Policy nel pannello preferenze</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- Dominio simulato smartincrelations.it (config B35 con policyUrl):
+     il footer del pannello "Gestisci preferenze" deve mostrare il link
+     "Cookie Policy" verso la policyUrl. Caso negativo: test-s15.html
+     (dominio senza regole) — il link deve restare nascosto. -->
+<script>
+  window.CookieWX = { config: { rulesBackendDomain: "smartincrelations.it" } };
+</script>
+<script src="/loader.js" data-cookiewx-key="cwx_015a182f2e0686b1e749f0f5989623d3" async></script>
+</head>
+<body>
+<h1>Test S21</h1>
+<p>Aprire "Gestisci preferenze": nel footer, a sinistra dei bottoni, deve
+comparire il link "Cookie Policy" che punta alla policyUrl della config
+del dominio simulato. Senza policyUrl il link non deve esistere.</p>
+</body>
+</html>
