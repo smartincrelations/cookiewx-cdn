@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.7"; // [S20-bis 2026-09-23] logo powered-by: lockup ritagliato 357x96 (era canvas quadrato 3000px -> logo illeggibile a 42px) + variante powered-logo-white.webp applicata automaticamente su tema scuro
+  var VERSION = "4.7.8"; // [S24 2026-09-24] ① safety-net vendor noti: regola DB "essenziali" scavalcata per tracker universalmente non-essenziali (Meta/TikTok/LinkedIn/Clarity/Hotjar...; GTM/GA/doubleclick gia' protetti dalla forced-list che precede il DB) — baseline GDPR con regole degradate da rules-sync REPLACE (S22); ② fix fetch firewall: Response 204 con body null (era throw sincrono nel codice dei siti); ③ fix deleteCookieEverywhere: bypass cookie guard via descriptor originale (le cancellazioni erano auto-bloccate dal guard)
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -1022,6 +1022,60 @@ function isFaviconOrSiteIconUrl(url) {
     );
   }
 
+  /* [S24 2026-09-24] SAFETY-NET vendor noti — baseline GDPR sempre garantita.
+   * Scenario S22: rules-sync REPLACE puo' consegnare regole degradate; se una
+   * regola DB classifica un tracker universalmente NON essenziale come
+   * "essenziali", il tracker passerebbe pre-consenso. Con questa rete la
+   * categoria vendor vince sull'"essenziali" del DB SOLO per questa lista
+   * conservativa; per tutto il resto le regole DB restano prioritarie
+   * (incluse categorie piu' severe ed eccezioni essenziali legittime su
+   * domini fuori lista). Copre anche il caso "regole assenti": il resolver
+   * consulta comunque VENDORS + fallback MARKETING. */
+  var SAFETY_NET_VENDOR_NAMES = [
+    "Google Tag Manager",
+    "Google Analytics",
+    "Google Ads / DoubleClick",
+    "Meta Pixel",
+    "TikTok Pixel",
+    "LinkedIn Insight",
+    "Microsoft Ads / Bing UET",
+    "Microsoft Clarity",
+    "Hotjar",
+    "Pinterest Tag",
+    "Snapchat Pixel",
+    "Reddit Ads",
+    "X / Twitter Ads",
+    "Wix Analytics"
+  ];
+
+  function safetyNetCategory(kind, value) {
+    try {
+      var vendor = kind === "cookie" ? findVendorByCookie(value) : findVendorByUrl(value);
+
+      if (!vendor) return "";
+      if (SAFETY_NET_VENDOR_NAMES.indexOf(vendor.name) === -1) return "";
+      if (vendor.category === CATEGORY.ESSENZIALI) return "";
+
+      return vendor.category;
+    } catch (_) {
+      return "";
+    }
+  }
+
+  // true se la categoria DB va corretta dalla safety-net: solo quando il DB
+  // dice "essenziali" su un vendor della lista (mai il contrario).
+  function applySafetyNet(kind, value, catDb) {
+    if (catDb !== CATEGORY.ESSENZIALI) return catDb;
+
+    var catSafe = safetyNetCategory(kind, value);
+
+    if (!catSafe) return catDb;
+
+    warn("CookieWX: safety-net S24 — regola DB 'essenziali' scavalcata per vendor noto", value, catSafe);
+
+    return catSafe;
+  }
+
   function isTechnicalEssentialUrl(url) {
     var host = getHostname(url);
 
@@ -1068,7 +1122,7 @@ function isFaviconOrSiteIconUrl(url) {
       return {
         kind: "cookie",
         value: name,
-        category: catDb,
+        category: applySafetyNet("cookie", name, catDb), // [S24]
         vendor: "Regola database",
         source: "db"
       };
@@ -1334,7 +1388,7 @@ if (catDb) {
   return {
     kind: kind,
     value: url,
-    category: catDb,
+    category: applySafetyNet(kind, url, catDb), // [S24] "essenziali" DB non vale per vendor noti
     vendor: "Regola database",
     source: "db"
   };
@@ -1727,7 +1781,10 @@ var vendor = findVendorByUrl(url);
 
         if (!canTransmit("request", url)) {
           if (typeof Response !== "undefined") {
-            return Promise.resolve(new Response("", {
+            // [S24] body null: con 204/304 Chromium lancia
+            // "null body status cannot have body" se il body e' "" — il
+            // blocco diventava un throw SINCRONO nel codice del sito.
+            return Promise.resolve(new Response(null, {
               status: 204,
               statusText: "CookieWX blocked"
             }));
@@ -1921,13 +1978,19 @@ var vendor = findVendorByUrl(url);
         "." + rootDomain
       ];
 
+      // [S24] bypass del cookie guard: la scrittura di cancellazione
+      // (expires nel passato) passerebbe dal setter intercettato, che la
+      // blocca perche' il cookie e' senza consenso → la cancellazione non
+      // avveniva MAI. Usiamo il descriptor originale quando disponibile.
+      var rawSet = (ORIGINALS.cookieDescriptor && ORIGINALS.cookieDescriptor.set)
+        ? function (v) { ORIGINALS.cookieDescriptor.set.call(document, v); }
+        : function (v) { document.cookie = v; };
+
       domains.forEach(function (domain) {
-        document.cookie =
-          name + "=; path=/; domain=" + domain + "; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+        rawSet(name + "=; path=/; domain=" + domain + "; expires=Thu, 01 Jan 1970 00:00:00 UTC;");
       });
 
-      document.cookie =
-        name + "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+      rawSet(name + "=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;");
     } catch (_) {}
   }
 
