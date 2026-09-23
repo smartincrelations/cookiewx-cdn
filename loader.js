@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.4"; // [S18 2026-09-23] same-site mai bloccato (salvo regola DB con path), matcher: ago bare-origin con scheme = solo origine esatta, type=module/importmap preservato al rilascio
+  var VERSION = "4.7.5"; // [S20 2026-09-23] logo powered-by + icona preferenze self-hosted: WebP 72x72 su cdn.cookiewx.com/assets/ (era PNG Wix 733 KB a oggetto su ogni sito cliente); [S19] cache loader max-age=3600 + SWR 24h via _headers CDN
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -2834,7 +2834,8 @@ var vendor = findVendorByUrl(url);
         '<div class="cwx-powered-wrap">' +
           '<span class="cwx-powered-text">Powered by</span>' +
           '<a href="https://www.cookiewx.com" target="_blank" rel="noopener" class="cwx-powered-link">' +
-            '<img src="https://static.wixstatic.com/media/cf36e3_e6f4be6aacee48589e8adeb30ec67d1a~mv2.png" alt="CookieWX" class="cwx-powered-logo">' +
+            // [S20] logo self-hosted WebP 72x72 su CDN proprio (era PNG Wix 733 KB)
+            '<img src="https://cdn.cookiewx.com/assets/powered-logo-72.webp" alt="CookieWX" class="cwx-powered-logo" width="36" height="36">' +
           '</a>' +
         '</div>' +
       '</div>' +
@@ -3693,7 +3694,8 @@ var vendor = findVendorByUrl(url);
 
   var CWX_BADGE_HTML =
     '<div id="' + IDS.BADGE + '" class="cwx-badge" title="Preferenze cookie">' +
-      '<img src="https://static.wixstatic.com/media/cf36e3_f2adf1efe1ce41079b157e69160ee495~mv2.png" alt="Cookie preferences">' +
+      // [S20] icona self-hosted WebP 72x72 su CDN proprio (era PNG Wix)
+      '<img src="https://cdn.cookiewx.com/assets/icon-prefs-72.webp" alt="Cookie preferences" width="36" height="36">' +
     '</div>';
 
   function injectBadgeStyle() {

@@ -1,8 +1,16 @@
 # cookiewx-cdn — headers Cloudflare Pages
 #
-# loader.js NON e' versionato nell'URL: con TTL 4h ogni fix impiegava ore
-# a propagarsi (caso S8 del 21/09: beacon "morto" = loader vecchio in
-# cache edge/browser). GO REGIA 2026-09-22 09:25: TTL 900 (15 min).
+# S19 (REGIA 2026-09-23 20:15): TTL loader 900 flaggato da PageSpeed.
+# Release ormai calmierate -> max-age=3600 (1h) + stale-while-revalidate
+# 24h: il browser serve subito la copia locale e ri-valida in background,
+# quindi un deploy propaga al massimo entro 1h senza mai bloccare il
+# rendering (rete di sicurezza anti-stantio: caso v4.7.0 del 21/09).
 # La purge selettiva via API token resta rinviata (token: Ugo).
 /loader.js
-  Cache-Control: public, max-age=900, must-revalidate
+  Cache-Control: public, max-age=3600, stale-while-revalidate=86400
+
+# S20 (REGIA 2026-09-23 20:25): asset di brand statici (logo banner,
+# icona preferenze) — WebP 72x72 self-hosted, nome file stabile.
+# Cache immutabile 1 anno: se cambia il contenuto cambia il nome file.
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
