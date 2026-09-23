@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.1"; // [S17] beacon analytics: Content-Type text/plain (Chrome preflighta i beacon application/json e non raggiungono il server)
+  var VERSION = "4.7.2"; // [S15] fail onesto: dominio senza regole (404/403) → banner con testo neutro, mai categorie inventate (+ marker localStorage, gate primo paint)
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -3067,6 +3067,9 @@ var vendor = findVendorByUrl(url);
 
       // config remota eventualmente gia' scaricata prima del mount
       if (bannerConfig) applyBannerConfig(bannerConfig);
+      // [S15] dominio senza regole e senza testo personalizzato: testo
+      // neutro, mai categorie inventate
+      neutralizeBannerIfNeeded();
 
       requestAnimationFrame(function () {
         banner.classList.add("cwx-banner-show");
@@ -3076,9 +3079,15 @@ var vendor = findVendorByUrl(url);
     // [S14②] visitatore senza cache: la config e' in arrivo — il primo
     // paint attende la risposta (max CFG_FIRST_PAINT_TIMEOUT_MS, vedi
     // pullConfigFromBackend) per non mostrare mai il tema default.
-    // Risolta o scaduta che sia, il banner si monta comunque.
-    if (cfgFirstPaintReady) {
-      cfgFirstPaintReady.then(function () { mount(); });
+    // [S15] se lo stato regole e' ignoto si attende anche la prima
+    // risposta di getRegole: un dominio senza regole nasce col testo
+    // neutro, senza flash di categorie inventate.
+    // Risolti o scaduti che siano, il banner si monta comunque.
+    if (cfgFirstPaintReady || rulesFirstPaintReady) {
+      var gates = [];
+      if (cfgFirstPaintReady) gates.push(cfgFirstPaintReady);
+      if (rulesFirstPaintReady) gates.push(rulesFirstPaintReady);
+      Promise.all(gates).then(function () { mount(); });
       return;
     }
 
@@ -3925,6 +3934,62 @@ var vendor = findVendorByUrl(url);
   var rulesPullTimer = null;
   var rulesPullInFlight = false;
 
+  /* [S15 2026-09-23 — v4.7.2] FAIL ONESTO se il backend non ha regole
+   * per il dominio (404) o la chiave e' negata/sospesa (403): il banner
+   * NON deve mai mostrare il testo di default che enumera categorie
+   * ("funzionali, statistici e marketing") — affermazioni inventate sul
+   * sito del cliente (caso nautrip.com, REGIA 22/09 21:35). Al suo posto
+   * un banner minimale neutro (il consenso resta raccoglibile: spegnere
+   * del tutto il banner sarebbe peggio per la compliance del cliente).
+   * Lo stato e' persistito in localStorage per il primo paint delle
+   * visite successive; alla prima visita il primo paint attende la prima
+   * risposta regole (stesso timeout della config, vedi showBanner). */
+  var REGOLE_MISSING_KEY = "cookiewxRegoleMissingV1";
+  var regoleMissing = false;
+  var rulesFirstPaintReady = null;
+  var rulesFirstPaintResolve = null;
+
+  function readRegoleMissing(dominio) {
+    try {
+      var o = safeJsonParse(localStorage.getItem(REGOLE_MISSING_KEY), null);
+      return !!(o && o.missing && o.dominio === dominio && safeString(o.k) === SITE_KEY);
+    } catch (_) { return false; }
+  }
+
+  function writeRegoleMissing(dominio, missing) {
+    try {
+      if (missing) {
+        localStorage.setItem(REGOLE_MISSING_KEY, JSON.stringify({
+          dominio: dominio, k: SITE_KEY, ts: Date.now()
+        }));
+      } else {
+        localStorage.removeItem(REGOLE_MISSING_KEY);
+      }
+    } catch (_) {}
+  }
+
+  function resolveRulesFirstPaint() {
+    try { if (rulesFirstPaintResolve) rulesFirstPaintResolve(); } catch (_) {}
+  }
+
+  // Testo neutro: nessuna categoria nominata, nessun claim sul blocco.
+  // Il testo personalizzato del cliente (config salvata) ha precedenza.
+  function neutralizeBannerIfNeeded() {
+    if (!regoleMissing) return;
+    if (bannerConfig && bannerConfig.testo) return;
+    var banner = document.getElementById(IDS.BANNER);
+    if (!banner) return;
+    var t = banner.querySelector(".cwx-banner-title");
+    if (t) t.textContent = "Gestione dei cookie";
+    var x = banner.querySelector(".cwx-banner-text");
+    if (x) {
+      x.innerHTML = "Questo sito utilizza cookie e tecnologie simili. " +
+        "Puoi accettare, rifiutare o gestire le tue scelte." +
+        ' <span data-cwx-policy-wrap><a href="#" data-cwx-policy>Cookie e privacy policy</a>.</span>';
+      bindPolicyLink();
+    }
+  }
+
   function versionTime(v) {
     if (!v) return 0;
     var n = Number(v);
@@ -3986,9 +4051,23 @@ var vendor = findVendorByUrl(url);
       signal: ctrl ? ctrl.signal : undefined
     }).then(function (r) {
       if (timer) clearTimeout(timer);
+      // [S15] 404 = nessuna regola per il dominio, 403 = chiave negata:
+      // marca lo stato e neutralizza il testo del banner (mai categorie
+      // inventate). Distinto dagli errori di rete (catch): li' resta tutto
+      // com'e', fail-open.
+      if (r && (r.status === 404 || r.status === 403)) {
+        regoleMissing = true;
+        writeRegoleMissing(dominio, true);
+        warn("CookieWX: nessuna regola per il dominio " + dominio +
+          " (HTTP " + r.status + ") — banner con testo neutro");
+        neutralizeBannerIfNeeded();
+        resolveRulesFirstPaint();
+        return null;
+      }
       return r.ok ? r.json() : null;
     }).then(function (regole) {
       rulesPullInFlight = false;
+      resolveRulesFirstPaint();
       // [B24+S8] il flag analytics va letto PRIMA di OGNI guard: ne' il
       // guard di versione di applyPulledRegole ne' risposte parziali
       // (senza array cookies) devono impedire arming/disarming del beacon
@@ -3996,15 +4075,34 @@ var vendor = findVendorByUrl(url);
         anSetEnabled(regole.analytics === true, regole.analyticsPre === true);
       }
       if (!regole || !Array.isArray(regole.cookies)) return;
+      if (regoleMissing) { // [S15] regole arrivate: stato rientrato
+        regoleMissing = false;
+        writeRegoleMissing(dominio, false);
+      }
       applyPulledRegole(regole);
     }).catch(function (err) {
       rulesPullInFlight = false;
+      resolveRulesFirstPaint();
       if (timer) clearTimeout(timer);
       warn("CookieWX: pull regole backend non riuscito", err);
     });
   }
 
   function startRulesBackendPull() {
+    // [S15] se lo stato regole e' ignoto (mai scaricate e nessun marker
+    // "missing"), il primo paint del banner attende la prima risposta
+    // (max CFG_FIRST_PAINT_TIMEOUT_MS): cosi' un dominio senza regole
+    // nasce gia' col testo neutro, senza flash di categorie inventate.
+    var cached = readRegoleFromStorage();
+    var regoleNote = !!(cached && cached.version && cached.version !== "0" &&
+      ((cached.cookies || []).length + (cached.scripts || []).length +
+       (cached.iframes || []).length) > 0);
+    if (!regoleNote && !regoleMissing && !rulesFirstPaintReady) {
+      rulesFirstPaintReady = new Promise(function (resolve) {
+        rulesFirstPaintResolve = resolve;
+        setTimeout(resolve, CFG_FIRST_PAINT_TIMEOUT_MS);
+      });
+    }
     // subito a boot + retry dopo 30s (copre il caso "regola appena pushata")
     // + ogni 5 min per aggiornamenti successivi
     setTimeout(pullRegoleFromBackend, 0);
@@ -4515,6 +4613,10 @@ var vendor = findVendorByUrl(url);
         subtree: true
       });
     } catch (_) {}
+
+    // [S15] stato "regole mancanti" dalla visita precedente: se noto,
+    // il primo paint nasce gia' neutro senza attendere la rete.
+    regoleMissing = readRegoleMissing(bannerDominio());
 
     // [S14] pullConfig PRIMA di applyFromStorage: la config in cache e'
     // applicata prima del primo render; senza cache la fetch parte qui
