@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.3"; // [S17b 2026-09-23] GC localStorage a cambio versione: cache effimere + chiavi cookiewx* ignote buttate via, mai consenso/user-id
+  var VERSION = "4.7.4"; // [S18 2026-09-23] same-site mai bloccato (salvo regola DB con path), matcher: ago bare-origin con scheme = solo origine esatta, type=module/importmap preservato al rilascio
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -902,11 +902,28 @@ function isFaviconOrSiteIconUrl(url) {
     });
   }
 
+  // [S18] true se l'ago e' la PURA ORIGINE con scheme ("https://host" o
+  // "https://host/"): un ago cosi' non deve mai matchare per sottostringa
+  // URL di origini diverse (es. "https://sito.it" inghiotteva anche
+  // "https://sito.it.cdn.altro.com/..."). Per URL diversi dall'origine
+  // esatta dell'ago: niente match. Gli aghi host-nudi ("googletagmanager.com")
+  // restano invariati: sono il formato legittimo delle regole vendor.
+  function bareOriginSchemeHost(needle) {
+    var m = /^https?:\/\/([^/?#\s]+)\/?$/i.exec(needle || "");
+    return m ? m[1].replace(/^www\./, "").toLowerCase() : "";
+  }
+
   function urlMatchesNeedle(url, needle) {
     url = lower(url);
     needle = lower(needle);
 
     if (!url || !needle) return false;
+
+    // [S18] ago bare-origin con scheme: solo match di origine ESATTA
+    var bareHost = bareOriginSchemeHost(needle);
+    if (bareHost) {
+      return getHostname(url) === bareHost;
+    }
 
     if (url.indexOf(needle) !== -1) return true;
 
@@ -924,7 +941,18 @@ function isFaviconOrSiteIconUrl(url) {
     return hostMatches(host, needleHost);
   }
 
-  function categoryFromDbUrlRule(list, url) {
+  // [S18] true se l'ago specifica un PATH oltre all'origine
+  // ("https://host/tracker.js", "host.com/gtm.js"). Un ago senza path
+  // (origine pura o host nudo) NON puo' classificare risorse same-site:
+  // e' quasi sempre un dato sporco dello scanner (documento base
+  // classificato al posto dello script, vedi S18 lato dati).
+  function needleHasPath(needle) {
+    var rest = String(needle || "").replace(/^https?:\/\//i, "");
+    var slash = rest.indexOf("/");
+    return slash !== -1 && rest.length > slash + 1;
+  }
+
+  function categoryFromDbUrlRule(list, url, onlyPathNeedles) {
     if (!Array.isArray(list) || !url) return "";
 
     for (var i = 0; i < list.length; i++) {
@@ -932,6 +960,7 @@ function isFaviconOrSiteIconUrl(url) {
       var needles = getRuleNeedles(rule);
 
       for (var j = 0; j < needles.length; j++) {
+        if (onlyPathNeedles && !needleHasPath(needles[j])) continue;
         if (urlMatchesNeedle(url, needles[j])) {
           return getRuleCategory(rule);
         }
@@ -1269,6 +1298,35 @@ if (
         .concat(window.CookieWX.regole.scripts || [])
         .concat(window.CookieWX.regole.iframes || []);
     }
+
+// [S18] same-site = MAI bloccato: le risorse caricate dall'origine del
+// sito stesso (o suoi sottodomini) sono first-party → ESSENZIALI, prima
+// ancora delle regole DB. Unica eccezione: una regola DB con ago su PATH
+// specifico (es. "https://sito.it/tracker.js") — una regola bare-origin
+// tipo "https://sito.it" → statistici e' un dato sporco dello scanner e
+// non puo' piu' inghiottire tutti gli script del sito (bug smartincrelations
+// 23/09: chunk /_next/* bloccati pre-consenso).
+if (isSameSiteUrl(url)) {
+  var catDbPath = categoryFromDbUrlRule(list, url, true);
+
+  if (catDbPath) {
+    return {
+      kind: kind,
+      value: url,
+      category: catDbPath,
+      vendor: "Regola database",
+      source: "db-path"
+    };
+  }
+
+  return {
+    kind: kind,
+    value: url,
+    category: CATEGORY.ESSENZIALI,
+    vendor: "First-party (same-site)",
+    source: "same-site"
+  };
+}
 
 var catDb = categoryFromDbUrlRule(list, url);
 
@@ -1932,6 +1990,15 @@ var vendor = findVendorByUrl(url);
       el.setAttribute("data-cwx-vendor", info.vendor || "");
       el.setAttribute("data-cwx-src", src);
 
+      // [S18] conserva il type originale (module, importmap...) prima di
+      // inerzializzare: al rilascio verra' ripristinato sul clone.
+      try {
+        var origType = el.getAttribute("type");
+        if (origType && lower(origType) !== "text/plain") {
+          el.setAttribute("data-cwx-type", origType);
+        }
+      } catch (_) {}
+
       try {
         el.type = "text/plain";
       } catch (_) {}
@@ -2006,6 +2073,17 @@ var vendor = findVendorByUrl(url);
             s.setAttribute(attr.name, attr.value);
           } catch (_) {}
         });
+
+        // [S18] ripristina il type originale (module, importmap...) salvato
+        // al blocco in data-cwx-type: senza, un type="module" rilasciato
+        // come script classico genera la tempesta di SyntaxError vista su
+        // smartincrelations.it (chunk /_next/*).
+        var cwxOrigType = oldEl.getAttribute("data-cwx-type") || "";
+        if (cwxOrigType) {
+          try {
+            s.setAttribute("type", cwxOrigType);
+          } catch (_) {}
+        }
 
         s.setAttribute("data-cwx-safe", "1");
         s.src = src;
@@ -2328,6 +2406,12 @@ var vendor = findVendorByUrl(url);
 
           if (!hasConsentFor(category)) {
             try {
+              var manualType = el.getAttribute("type");
+              if (manualType && lower(manualType) !== "text/plain") {
+                el.setAttribute("data-cwx-type", manualType); // [S18]
+              }
+            } catch (_) {}
+            try {
               el.type = "text/plain";
             } catch (_) {}
           }
@@ -2382,6 +2466,14 @@ var vendor = findVendorByUrl(url);
             s.setAttribute(attr.name, attr.value);
           } catch (_) {}
         });
+
+        // [S18] ripristina il type originale salvato al blocco (module...)
+        var cwxOrigTypeManual = oldEl.getAttribute("data-cwx-type") || "";
+        if (cwxOrigTypeManual) {
+          try {
+            s.setAttribute("type", cwxOrigTypeManual);
+          } catch (_) {}
+        }
 
         s.setAttribute("data-cwx-safe", "1");
 
@@ -2452,6 +2544,13 @@ var vendor = findVendorByUrl(url);
           node.setAttribute("data-cwx-category", info.category);
           node.setAttribute("data-cwx-vendor", info.vendor || "");
           node.setAttribute("data-cwx-src", src);
+
+          try {
+            var nodeType = node.getAttribute("type");
+            if (nodeType && lower(nodeType) !== "text/plain") {
+              node.setAttribute("data-cwx-type", nodeType); // [S18]
+            }
+          } catch (_) {}
 
           try {
             node.type = "text/plain";
@@ -2562,6 +2661,13 @@ var vendor = findVendorByUrl(url);
                   this.setAttribute("data-cwx-category", info.category);
                   this.setAttribute("data-cwx-vendor", info.vendor || "");
                   this.setAttribute("data-cwx-src", value);
+
+                  try {
+                    var fwType = this.getAttribute("type");
+                    if (fwType && lower(fwType) !== "text/plain") {
+                      this.setAttribute("data-cwx-type", fwType); // [S18]
+                    }
+                  } catch (_) {}
 
                   try {
                     this.type = "text/plain";
