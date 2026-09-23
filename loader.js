@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.6"; // [S21 2026-09-23] link "Cookie Policy" nel footer del pannello Gestisci preferenze: policyUrl da config B35, nascosto se assente, colore primario config, bindPolicyLink generalizzato (banner + preferenze)
+  var VERSION = "4.7.7"; // [S20-bis 2026-09-23] logo powered-by: lockup ritagliato 357x96 (era canvas quadrato 3000px -> logo illeggibile a 42px) + variante powered-logo-white.webp applicata automaticamente su tema scuro
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -2834,8 +2834,10 @@ var vendor = findVendorByUrl(url);
         '<div class="cwx-powered-wrap">' +
           '<span class="cwx-powered-text">Powered by</span>' +
           '<a href="https://www.cookiewx.com" target="_blank" rel="noopener" class="cwx-powered-link">' +
-            // [S20] logo self-hosted WebP 72x72 su CDN proprio (era PNG Wix 733 KB)
-            '<img src="https://cdn.cookiewx.com/assets/powered-logo-72.webp" alt="CookieWX" class="cwx-powered-logo" width="36" height="36">' +
+            // [S20] logo self-hosted WebP su CDN proprio (era PNG Wix 733 KB)
+            // [S20-bis] lockup ritagliato 357x96 (niente piu' canvas quadrato);
+            // tema scuro -> variante bianca, swap in applyBannerConfig
+            '<img src="https://cdn.cookiewx.com/assets/powered-logo.webp" alt="CookieWX" class="cwx-powered-logo">' +
           '</a>' +
         '</div>' +
       '</div>' +
@@ -3059,6 +3061,15 @@ var vendor = findVendorByUrl(url);
       css += "#cookiewx-banner .cwx-banner-text{color:#a1a1aa !important;}";
       css += "#cookiewx-banner .cwx-banner-text a{color:#f4f4f5 !important;}";
       css += "#cookiewx-banner .cwx-powered-wrap{color:#a1a1aa !important;}";
+    }
+
+    // [S20-bis] il logo standard ha testo navy: sul tema scuro (#171720)
+    // sarebbe invisibile -> variante con testo bianco; reset sul chiaro.
+    var plogo = banner ? banner.querySelector(".cwx-powered-logo") : null;
+    if (plogo) {
+      plogo.src = cfg.tema === "scuro"
+        ? "https://cdn.cookiewx.com/assets/powered-logo-white.webp"
+        : "https://cdn.cookiewx.com/assets/powered-logo.webp";
     }
 
     var pos = cfg.posizione;
