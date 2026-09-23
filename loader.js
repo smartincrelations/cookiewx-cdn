@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.2"; // [S15] fail onesto: dominio senza regole (404/403) → banner con testo neutro, mai categorie inventate (+ marker localStorage, gate primo paint)
+  var VERSION = "4.7.3"; // [S17b 2026-09-23] GC localStorage a cambio versione: cache effimere + chiavi cookiewx* ignote buttate via, mai consenso/user-id
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -44,6 +44,44 @@
     TICK: "cookiewxTick",
     USER_ID: "cookiewxUserId"
   };
+
+  /* [S17b 2026-09-23 — v4.7.3] Garbage collection del localStorage a
+   * cambio VERSION. A ogni nuova versione del loader si buttano:
+   *  - le cache effimere (config banner, marker "regole mancanti" S15):
+   *    vengono riscaricate/ricalcolate subito (config con SWR S14, marker
+   *    al primo pull regole);
+   *  - QUALSIASI chiave cookiewx* non nella whitelist: retaggi di
+   *    versioni passate (es. chiavi rinominate) non restano appesi per
+   *    sempre.
+   * MAI toccate: CONSENSO e TICK (prova legale del consenso), USER_ID
+   * (identita' analytics), REGOLE (fail-safe del blocco se l'API e' giu';
+   * si auto-aggiorna al pull, max 5 min). Chiavi platform_app_* (compat
+   * era Wix, readLocalCompat) fuori scope: prefisso diverso. */
+  var STORAGE_VERSION_KEY = "cookiewxLoaderV";
+  var STORAGE_KEEP_KEYS = [
+    "cookiewxConsenso", "cookiewxTick", "cookiewxUserId",
+    "cookiewxRegole", "cookiewxCfgCacheV1", "cookiewxRegoleMissingV1",
+    "cookiewxLoaderV"
+  ];
+  function gcStorageOnVersionChange() {
+    try {
+      if (localStorage.getItem(STORAGE_VERSION_KEY) === VERSION) return;
+      var keep = {};
+      for (var i = 0; i < STORAGE_KEEP_KEYS.length; i++) {
+        keep[STORAGE_KEEP_KEYS[i]] = true;
+      }
+      var keys = Object.keys(localStorage);
+      for (var j = 0; j < keys.length; j++) {
+        var k = keys[j];
+        if (k.indexOf("cookiewx") === 0 && !keep[k]) {
+          localStorage.removeItem(k);
+        }
+      }
+      localStorage.removeItem("cookiewxCfgCacheV1");
+      localStorage.removeItem("cookiewxRegoleMissingV1");
+      localStorage.setItem(STORAGE_VERSION_KEY, VERSION);
+    } catch (_) {}
+  }
 
   var IDS = {
     BANNER: "cookiewx-banner",
@@ -4602,6 +4640,7 @@ var vendor = findVendorByUrl(url);
   }
 
   function boot() {
+    gcStorageOnVersionChange(); // [S17b] prima di OGNI lettura cache
     markCurrentScriptSafe();
     installAllFirewalls();
 
