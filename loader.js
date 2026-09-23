@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.0"; // [S14] no flash tema default: SWR sempre (cache applicata pre-render) + primo paint attende /api/config max 500ms
+  var VERSION = "4.7.1"; // [S17] beacon analytics: Content-Type text/plain (Chrome preflighta i beacon application/json e non raggiungono il server)
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -4184,9 +4184,15 @@ var vendor = findVendorByUrl(url);
     var sent = false;
     try {
       if (navigator.sendBeacon) {
+        // [S17 2026-09-23 — v4.7.1] Content-Type SAFELISTED: con
+        // "application/json" Chrome preflighta il sendBeacon e la chiamata
+        // non raggiunge MAI il server (provato live: beacon json persi,
+        // beacon text/plain scritti in D1). Il server fa request.json()
+        // sul body a prescindere dall'header → text/plain e' identico
+        // semanticamente ma viaggia senza preflight.
         sent = navigator.sendBeacon(
           ANALYTICS_COLLECT_URL,
-          new Blob([body], { type: "application/json" })
+          new Blob([body], { type: "text/plain" })
         );
       }
     } catch (_) { sent = false; }
@@ -4194,7 +4200,7 @@ var vendor = findVendorByUrl(url);
       try {
         fetch(ANALYTICS_COLLECT_URL, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "text/plain" }, // [S17] vedi sopra
           body: body,
           credentials: "omit",
           keepalive: true
