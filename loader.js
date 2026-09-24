@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.6.1
+ * CookieWX Loader v4.7.9
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.8"; // [S24 2026-09-24] ① safety-net vendor noti: regola DB "essenziali" scavalcata per tracker universalmente non-essenziali (Meta/TikTok/LinkedIn/Clarity/Hotjar...; GTM/GA/doubleclick gia' protetti dalla forced-list che precede il DB) — baseline GDPR con regole degradate da rules-sync REPLACE (S22); ② fix fetch firewall: Response 204 con body null (era throw sincrono nel codice dei siti); ③ fix deleteCookieEverywhere: bypass cookie guard via descriptor originale (le cancellazioni erano auto-bloccate dal guard)
+  var VERSION = "4.7.9"; // [S26+S28 2026-09-25] ① S26: perf beacon manda il ms REALE di caricamento catturato su window.load (prima: performance.now() al momento dell'invio = tempo-fino-al-click sul consenso in Modalita' A, es. 28s — "Velocita' media pagina" sballata); ② S28: "mostrato" conteggiato una volta per sessione di tab (sessionStorage) invece che a ogni pageview — il flag shownSent in memoria si resettava a ogni caricamento pagina e diluiva il tassoConsenso (accettati/mostrati)
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -4402,6 +4402,7 @@ var vendor = findVendorByUrl(url);
     vid: null,
     pvSent: false,
     perfSent: false,
+    loadMs: null,
     shownSent: false,
     scrollSent: {},
     lastHb: 0
@@ -4510,6 +4511,19 @@ var vendor = findVendorByUrl(url);
     // tornato (il banner si mostra al boot, prima della risposta).
     if (azione === "mostrato") {
       if (CWX_AN.shownSent) return;
+      // [S28 2026-09-25 — v4.7.9] "mostrato" una volta per sessione di
+      // tab, non a ogni pageview: il flag in memoria si resettava a ogni
+      // caricamento pagina e chi navigava N pagine col banner aperto
+      // generava N "mostrato" con al massimo 1 esito → tassoConsenso
+      // diluito. sessionStorage = per tab/sessione di navigazione,
+      // nessuna persistenza cross-session (privacy-friendly).
+      try {
+        if (sessionStorage.getItem("cookiewxAnShown")) {
+          CWX_AN.shownSent = true;
+          return;
+        }
+        sessionStorage.setItem("cookiewxAnShown", "1");
+      } catch (_) {}
       CWX_AN.shownSent = true;
     }
     var ev = { t: "consent", a: azione };
@@ -4566,14 +4580,37 @@ var vendor = findVendorByUrl(url);
     }
   }
 
+  function anCaptureLoadMs() {
+    // [S26 2026-09-25 — v4.7.9] ms di caricamento REALE: Navigation
+    // Timing (loadEventEnd da navigation start) con fallback
+    // performance.now() registrato al load. Prima si misurava
+    // performance.now() al momento dell'invio del beacon = tempo fino
+    // al click sul consenso (es. 28s), non il caricamento pagina.
+    if (CWX_AN.loadMs != null) return;
+    try {
+      var nav = (window.performance && performance.getEntriesByType)
+        ? performance.getEntriesByType("navigation")[0] : null;
+      if (nav && nav.loadEventEnd > 0) {
+        CWX_AN.loadMs = nav.loadEventEnd;
+        return;
+      }
+    } catch (_) {}
+    try {
+      CWX_AN.loadMs = (window.performance && performance.now) ? performance.now() : 0;
+    } catch (_) { CWX_AN.loadMs = 0; }
+  }
+
   function anMaybePerf() {
     if (!CWX_AN.on || CWX_AN.perfSent) return;
     if (!anHasStatsConsent()) return;
     try {
-      if (document.readyState !== "complete") return;
+      if (CWX_AN.loadMs == null) {
+        // load non ancora avvenuto: riprova al listener di window.load
+        if (document.readyState !== "complete") return;
+        anCaptureLoadMs();
+      }
       CWX_AN.perfSent = true;
-      var ms = (window.performance && performance.now) ? performance.now() : 0;
-      anTrack("perf", { ms: ms });
+      anTrack("perf", { ms: CWX_AN.loadMs });
     } catch (_) {}
   }
 
@@ -4693,10 +4730,21 @@ var vendor = findVendorByUrl(url);
     // perf a caricamento completo
     try {
       window.addEventListener("load", function () {
-        setTimeout(anMaybePerf, 0);
+        setTimeout(function () { anCaptureLoadMs(); anMaybePerf(); }, 0);
       });
     } catch (_) {}
   }
+
+  // [S26 — v4.7.9] la cattura del ms di load si registra al BOOT, non in
+  // anStart: se getRegole/consenso arrivano dopo window.load, il listener
+  // di anStart non scatterebbe mai e loadMs resterebbe null.
+  try {
+    if (document.readyState === "complete") {
+      anCaptureLoadMs();
+    } else {
+      window.addEventListener("load", function () { setTimeout(anCaptureLoadMs, 0); });
+    }
+  } catch (_) {}
 
 
   /* =========================================================
