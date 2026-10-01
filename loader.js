@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.7.9
+ * CookieWX Loader v4.7.10
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.9"; // [S26+S28 2026-09-25] ① S26: perf beacon manda il ms REALE di caricamento catturato su window.load (prima: performance.now() al momento dell'invio = tempo-fino-al-click sul consenso in Modalita' A, es. 28s — "Velocita' media pagina" sballata); ② S28: "mostrato" conteggiato una volta per sessione di tab (sessionStorage) invece che a ogni pageview — il flag shownSent in memoria si resettava a ogni caricamento pagina e diluiva il tassoConsenso (accettati/mostrati)
+  var VERSION = "4.7.10"; // [S31 2026-10-01] fix banner DUPLICATO: race TOCTOU in showBanner — la guardia getElementById passava due volte prima che il primo mount (dietro promise gate cfg/regole) completasse; due applyFromStorage ravvicinati (boot + storage/tick) montavano 2 #cookiewx-banner impilati (riprodotto sempre su latinaebusiness.it). Fix: flag bannerMountScheduled + mount idempotente + reset in hideBanner
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -3265,12 +3265,20 @@ var vendor = findVendorByUrl(url);
     });
   }
 
+  var bannerMountScheduled = false; // [S31 2026-10-01 — v4.7.10] anti-doppio-mount
+
   function showBanner() {
-    if (document.getElementById(IDS.BANNER)) return;
+    if (bannerMountScheduled || document.getElementById(IDS.BANNER)) return;
+    bannerMountScheduled = true;
 
     anConsent("mostrato"); // [B24] telemetria CMP anonima (buffer se beacon non ancora attivo)
 
     function mount() {
+      // [S31] idempotenza: la guardia in showBanner e' TOCTOU — due
+      // applyFromStorage ravvicinati (boot + storage/tick) passano
+      // entrambi prima che il primo mount completi → su latinaebusiness
+      // c'erano SEMPRE 2 #cookiewx-banner impilati. Mai due banner.
+      if (document.getElementById(IDS.BANNER)) return;
       if (!document.body) {
         requestAnimationFrame(mount);
         return;
@@ -3319,13 +3327,14 @@ var vendor = findVendorByUrl(url);
   function hideBanner() {
     var el = document.getElementById(IDS.BANNER);
 
-    if (!el) return;
+    if (!el) { bannerMountScheduled = false; return; }
 
     el.classList.remove("cwx-banner-show");
     removeBackdrop();
 
     setTimeout(function () {
       if (el && el.parentNode) el.remove();
+      bannerMountScheduled = false; // [S31] il banner puo' essere rimontato (es. annulla preferenze senza consenso)
     }, 350);
   }
 
