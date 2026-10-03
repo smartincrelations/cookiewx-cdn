@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.10"; // [S31 2026-10-01] fix banner DUPLICATO: race TOCTOU in showBanner — la guardia getElementById passava due volte prima che il primo mount (dietro promise gate cfg/regole) completasse; due applyFromStorage ravvicinati (boot + storage/tick) montavano 2 #cookiewx-banner impilati (riprodotto sempre su latinaebusiness.it). Fix: flag bannerMountScheduled + mount idempotente + reset in hideBanner
+  var VERSION = "4.7.11"; // [S-token 2026-10-03] B36: il loader ripassa t=consentToken (HMAC effimero da getRegole, slot 10min+grazia 20min) nel POST /consent e nel body analytics/collect — abilita CONSENT_TOKEN_STRICT lato server
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -4025,6 +4025,11 @@ var vendor = findVendorByUrl(url);
       // [BR7] chiave sito, se lo snippet la dichiara (valida la server, B11)
       if (SITE_KEY) payload.k = SITE_KEY;
 
+      // [S-token v4.7.11] B36: consentToken effimero da getRegole.
+      // Senza token il server applica l'euristica anti-injection (soft);
+      // con CONSENT_TOKEN_STRICT=1 il token diventa obbligatorio.
+      if (consentTokenCorrente) payload.t = consentTokenCorrente;
+
       // Dev/demo: se COOKIEWX_API e' valorizzato, il consenso va al
       // backend indicato (e NON ai server di produzione).
       if (API) {
@@ -4194,6 +4199,14 @@ var vendor = findVendorByUrl(url);
   var rulesPullTimer = null;
   var rulesPullInFlight = false;
 
+  /* [S-token 2026-10-03 — v4.7.11] B36 anti-poisoning: /getRegole emette
+   * consentToken effimero (HMAC server-side). Lo teniamo SOLO in memoria
+   * (niente storage: scade in 10-30 min e non deve sopravvivere alla
+   * pagina) e lo rimandiamo come "t" nel POST /consent e nel body di
+   * analytics/collect. Se assente (regole non ancora arrivate al click)
+   * il server fa la sua euristica: mai bloccante per l'utente. */
+  var consentTokenCorrente = null;
+
   /* [S15 2026-09-23 — v4.7.2] FAIL ONESTO se il backend non ha regole
    * per il dominio (404) o la chiave e' negata/sospesa (403): il banner
    * NON deve mai mostrare il testo di default che enumera categorie
@@ -4333,6 +4346,12 @@ var vendor = findVendorByUrl(url);
       // (senza array cookies) devono impedire arming/disarming del beacon
       if (regole && typeof regole === "object") {
         anSetEnabled(regole.analytics === true, regole.analyticsPre === true);
+        // [S-token v4.7.11] cattura il consentToken fresco (stessa
+        // priorita' del flag analytics: mai dietro il guard cookies)
+        if (typeof regole.consentToken === "string" &&
+            regole.consentToken.length >= 16 && regole.consentToken.length <= 128) {
+          consentTokenCorrente = regole.consentToken;
+        }
       }
       if (!regole || !Array.isArray(regole.cookies)) return;
       if (regoleMissing) { // [S15] regole arrivate: stato rientrato
@@ -4551,7 +4570,11 @@ var vendor = findVendorByUrl(url);
     var batch = CWX_AN.q.splice(0, 50);
     var body;
     try {
-      body = JSON.stringify({ k: SITE_KEY, dominio: bannerDominio(), eventi: batch });
+      var anBody = { k: SITE_KEY, dominio: bannerDominio(), eventi: batch };
+      // [S-token v4.7.11] B36: token effimero anche sul collect (top-level:
+      // "t" dentro i singoli eventi e' gia' il TIPO evento — non toccare).
+      if (consentTokenCorrente) anBody.t = consentTokenCorrente;
+      body = JSON.stringify(anBody);
     } catch (_) { return; }
     var sent = false;
     try {
