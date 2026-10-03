@@ -48,6 +48,13 @@ Ultimo aggiornamento: 2026-09-22 16:40 (conversazione "BASTION" — _headers TTL
 
 ## Ultime modifiche
 
+- 2026-10-03 23:30 (chat SCOUT): **loader v4.7.11 — S-token (B36)** (commit
+  `f44c90e`). Il loader cattura `consentToken` dalla risposta getRegole
+  (in memoria, mai storage) e lo rimanda come `t` nel POST /consent e nel
+  body top-level di analytics/collect. Abilita `CONSENT_TOKEN_STRICT=1`
+  lato server (timing in 📮 STATO-PROGETTO 03/10 ~23:30). Copia demo
+  allineata in cookiewx-web (`d8c9458`). Verificato live su pages.dev;
+  cdn.cookiewx.com in rollover edge (~1h).
 - 2026-09-22 16:35 (chat BASTION): **_headers con TTL 900 su loader.js**
   (GO REGIA 22/09 09:25, thread S8). `Cache-Control: public,
   max-age=900, must-revalidate` — su cookiewx-cdn.pages.dev gia' live e
