@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.11"; // [S-token 2026-10-03] B36: il loader ripassa t=consentToken (HMAC effimero da getRegole, slot 10min+grazia 20min) nel POST /consent e nel body analytics/collect — abilita CONSENT_TOKEN_STRICT lato server
+  var VERSION = "4.7.12"; // [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -4736,12 +4736,17 @@ var vendor = findVendorByUrl(url);
       window.addEventListener("scroll", onAnScroll);
     }
 
-    // click delegato: [data-cwx-track] -> label; link esterno -> exit_click
+    // click delegato: [data-cwx-track] -> label; contatti (S36) ->
+    // contatto:tel/mailto/whatsapp; link esterno -> exit_click.
+    // [S36] Regole inviolabili: SOLO il conteggio, MAI contenuti (niente
+    // numeri digitati, indirizzi o testi): la label e' una costante.
+    // La nostra UI (banner/preferenze/badge) e' sempre esclusa.
     try {
       document.addEventListener("click", function (e) {
         if (!CWX_AN.on || !anHasStatsConsent()) return;
         try {
           var t = e.target;
+          if (t && t.closest && t.closest("#cookiewx-banner, #cookiewx-preferences, #cookiewx-badge, #cookiewx-backdrop")) return;
           var tracked = t && t.closest ? t.closest("[data-cwx-track]") : null;
           if (tracked) {
             anTrack("click", { label: tracked.getAttribute("data-cwx-track") });
@@ -4751,10 +4756,41 @@ var vendor = findVendorByUrl(url);
           if (!a) return;
           var href = safeString(a.getAttribute("href"));
           if (!href || href.charAt(0) === "#") return;
+          // [S36] contatti: tel:/mailto: non sono URL http — si intercettano
+          // sullo schema; WhatsApp sui domini noti (prima di exit_click).
+          var hrefLc = href.toLowerCase();
+          if (hrefLc.indexOf("tel:") === 0) {
+            anTrack("click", { label: "contatto:tel" });
+            return;
+          }
+          if (hrefLc.indexOf("mailto:") === 0) {
+            anTrack("click", { label: "contatto:mailto" });
+            return;
+          }
           var u = new URL(href, location.href);
+          if (u.hostname && /(^|\.)(wa\.me|whatsapp\.com)$/.test(u.hostname)) {
+            anTrack("click", { label: "contatto:whatsapp" });
+            return;
+          }
           if (u.hostname && u.hostname !== location.hostname) {
             anTrack("exit_click", { dest: u.hostname });
           }
+        } catch (_) {}
+      }, true);
+    } catch (_) {}
+
+    // [S36] invii modulo: SOLO l'evento (pagina gia' in ev.p), mai i dati
+    // inseriti — nessuna lettura dei campi, nessuna esclusione per tipo:
+    // se il sito ha un form, il submit conta uno. Delegato in capture per
+    // vedere anche i form che bloccano la propagazione.
+    try {
+      document.addEventListener("submit", function (e) {
+        if (!CWX_AN.on || !anHasStatsConsent()) return;
+        try {
+          var f = e.target;
+          if (!f || f.nodeName !== "FORM") return;
+          if (f.closest && f.closest("#cookiewx-banner, #cookiewx-preferences, #cookiewx-badge, #cookiewx-backdrop")) return;
+          anTrack("click", { label: "form:submit" });
         } catch (_) {}
       }, true);
     } catch (_) {}
