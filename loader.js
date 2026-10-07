@@ -3868,24 +3868,6 @@ var vendor = findVendorByUrl(url);
         50%  { transform: translateX(-55%) scale(1.08); }
         100% { transform: translateX(-55%) scale(1); }
       }
-
-      /* [P152] Su mobile la "sbirciatina" (translateX(-55%)) esce dallo
-         schermo: badge sempre tutto dentro, niente pulse, e sollevato
-         dalla home-indicator iOS (safe-area). */
-      @media (max-width: 640px) {
-        .cwx-badge {
-          left: 12px;
-          bottom: calc(24px + env(safe-area-inset-bottom, 0px));
-          transform: none;
-          opacity: .85;
-        }
-        .cwx-badge.cwx-open {
-          transform: none;
-        }
-        .cwx-badge.cwx-pulse {
-          animation: none;
-        }
-      }
     `;
 
     document.head.appendChild(style);
