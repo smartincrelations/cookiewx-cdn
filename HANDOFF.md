@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-09-22 16:40 (conversazione "BASTION" — _headers TTL loader 900)
+Ultimo aggiornamento: 2026-10-09 18:45 (conversazione "SCOUT" — S41 Planet49, loader v4.7.13)
 
 ## Repo
 
@@ -33,6 +33,12 @@ Ultimo aggiornamento: 2026-09-22 16:40 (conversazione "BASTION" — _headers TTL
 ## Stato
 
 ### Fatto
+- **Loader v4.7.13 (09/10/2026, S41 Planet49):** pannello preferenze MAI
+  pre-spuntato — senza consenso salvato le categorie non essenziali
+  partono SPENTE (prima erano tutte true = consenso invalido). Consenso
+  salvato → pre-compilazione da quello; Essenziali sempre ON+disabled;
+  bottoni banner invariati. E2E live 3 scenari su demo.html ✅.
+  Copia demo allineata in cookiewx-web/public/demo/loader.js.
 - Loader v4.3: dual-write consenso (Wix `_functions/cookiewxConsent` +
   api.cookiewx.com/consent), getRegole switchato su api.cookiewx.com
 - Blocco config-banner dal backend (pullConfigFromBackend nel boot,
