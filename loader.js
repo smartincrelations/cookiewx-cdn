@@ -3317,6 +3317,9 @@ var vendor = findVendorByUrl(url);
     anConsent("mostrato"); // [B24] telemetria CMP anonima (buffer se beacon non ancora attivo)
 
     function mount() {
+      // [S42] se l'abort e' arrivato tra lo scheduling e il paint,
+      // il mount in volo NON deve completare (banner mai visibile).
+      if (CWX_ABORTED) return;
       // [S31] idempotenza: la guardia in showBanner e' TOCTOU — due
       // applyFromStorage ravvicinati (boot + storage/tick) passano
       // entrambi prima che il primo mount completi → su latinaebusiness
@@ -3742,6 +3745,7 @@ var vendor = findVendorByUrl(url);
     if (document.getElementById(IDS.PREFS)) return;
 
     function mount() {
+      if (CWX_ABORTED) return; // [S42] mount in volo post-abort
       if (!document.body) {
         requestAnimationFrame(mount);
         return;
@@ -3925,6 +3929,7 @@ var vendor = findVendorByUrl(url);
   function showBadge() {
     if (CWX_ABORTED) return; // [S42] chiave invalida: mai badge
     function mount() {
+      if (CWX_ABORTED) return; // [S42] mount in volo post-abort
       if (!document.body) {
         requestAnimationFrame(mount);
         return;
