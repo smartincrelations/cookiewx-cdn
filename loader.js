@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.7.13
+ * CookieWX Loader v4.7.14
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.13"; // [S41 2026-10-09] Planet49: preferenze non essenziali SPENTE di default quando non esiste consenso salvato (pannello mai pre-spuntato). [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
+  var VERSION = "4.7.14"; // [S42 2026-10-09] chiave obbligatoria: getRegole 403 (chiave_richiesta/sconosciuta/dominio_non_registrato/suspended/cancelled) → abort totale loader (no banner/badge/blocco/beacon, rilascio bloccati, 1 console.warn). [S41 2026-10-09] Planet49: preferenze non essenziali SPENTE di default quando non esiste consenso salvato (pannello mai pre-spuntato). [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -155,6 +155,40 @@
     marketing: false
   };
 
+  /* [S42 2026-10-09 — v4.7.14] Chiave obbligatoria (decisione Ugo):
+   * se il backend nega la chiave (getRegole 403 con codice
+   * chiave_richiesta / chiave_sconosciuta / dominio_non_registrato /
+   * chiave_suspended / chiave_cancelled) il loader si spegne del tutto:
+   * niente banner, badge, blocco script, beacon consent/analytics.
+   * Quanto gia' bloccato viene rilasciato: il sito torna come se lo
+   * snippet non ci fosse. UN solo console.warn per il proprietario.
+   * Gli override demo (COOKIEWX_RULES_DOMAIN / COOKIEWX_SITE_KEY /
+   * COOKIEWX_API) non sono toccati: i domini demo rispondono 200. */
+  var CWX_ABORTED = false;
+
+  function abortLoader(motivo) {
+    if (CWX_ABORTED) return;
+    CWX_ABORTED = true;
+    warn("CookieWX: chiave mancante o non valida per questo dominio — " +
+      "attivalo dalla console su cookiewx.com (" + (motivo || "chiave_non_valida") + ")");
+    try { if (rulesPullTimer) { clearInterval(rulesPullTimer); rulesPullTimer = null; } } catch (_) {}
+    try { domObserver.disconnect(); } catch (_) {}
+    try { anSetEnabled(false, false); } catch (_) {}
+    try { hideBanner(); hideBadge(); hidePreferences(); } catch (_) {}
+    // Sblocco totale: hasConsentFor ritorna true per tutto da abortito,
+    // quindi le release svuotano le code. L'updateGoogleConsent va DOPO
+    // reEnable (che riapplica il consenso in memoria): l'ultimo stato
+    // scritto deve essere granted — senza banner l'utente non potrebbe
+    // mai concederlo.
+    try { reEnableGoogleRuntimeIfAllowed(); } catch (_) {}
+    try { updateGoogleConsent({ funzionali: true, statistici: true, marketing: true }); } catch (_) {}
+    try {
+      releaseManualTaggedElements();
+      releaseBlockedScripts();
+      releaseBlockedIframes();
+    } catch (_) {}
+  }
+
   var ORIGINALS = {};
 
 
@@ -196,6 +230,7 @@
   }
 
   function publishTelemetrySnapshot() {
+    if (CWX_ABORTED) return; // [S42] loader spento: niente telemetria
     try {
       window.postMessage({
         type: "COOKIEWX_TELEMETRY_SNAPSHOT",
@@ -567,6 +602,10 @@ function isFaviconOrSiteIconUrl(url) {
 
   function hasConsentFor(category) {
     category = normalizeCategory(category);
+
+    // [S42] loader abortito (chiave invalida): tutto consentito,
+    // cosi' le release sbloccano e nulla viene piu' bloccato.
+    if (CWX_ABORTED) return true;
 
     if (category === CATEGORY.ESSENZIALI) return true;
 
@@ -1997,6 +2036,7 @@ var vendor = findVendorByUrl(url);
   }
 
   function deleteCookiesWithoutConsent() {
+    if (CWX_ABORTED) return; // [S42] loader spento: mai cancellare cookie
     try {
       var cookies = document.cookie ? document.cookie.split(";") : [];
 
@@ -3270,6 +3310,7 @@ var vendor = findVendorByUrl(url);
   var bannerMountScheduled = false; // [S31 2026-10-01 — v4.7.10] anti-doppio-mount
 
   function showBanner() {
+    if (CWX_ABORTED) return; // [S42] chiave invalida: mai banner
     if (bannerMountScheduled || document.getElementById(IDS.BANNER)) return;
     bannerMountScheduled = true;
 
@@ -3697,6 +3738,7 @@ var vendor = findVendorByUrl(url);
   }
 
   function showPreferences() {
+    if (CWX_ABORTED) return; // [S42] chiave invalida: mai pannello
     if (document.getElementById(IDS.PREFS)) return;
 
     function mount() {
@@ -3881,6 +3923,7 @@ var vendor = findVendorByUrl(url);
   }
 
   function showBadge() {
+    if (CWX_ABORTED) return; // [S42] chiave invalida: mai badge
     function mount() {
       if (!document.body) {
         requestAnimationFrame(mount);
@@ -4306,6 +4349,7 @@ var vendor = findVendorByUrl(url);
   }
 
   function pullRegoleFromBackend() {
+    if (CWX_ABORTED) return; // [S42] loader spento: mai piu' pull regole
     if (rulesPullInFlight) return;
     if (window.CookieWX && window.CookieWX.config && window.CookieWX.config.rulesBackendSync === false) return;
 
@@ -4331,11 +4375,23 @@ var vendor = findVendorByUrl(url);
       signal: ctrl ? ctrl.signal : undefined
     }).then(function (r) {
       if (timer) clearTimeout(timer);
-      // [S15] 404 = nessuna regola per il dominio, 403 = chiave negata:
-      // marca lo stato e neutralizza il testo del banner (mai categorie
-      // inventate). Distinto dagli errori di rete (catch): li' resta tutto
+      // [S42] 403 = chiave mancante/negata/sospesa (codice nel body):
+      // il loader si spegne del tutto (niente banner/badge/blocco/beacon)
+      // e rilascia quanto gia' bloccato. Distinto dal 404 S15 (chiave
+      // valida ma nessuna regola: li' resta il banner neutro).
+      if (r && r.status === 403) {
+        rulesPullInFlight = false;
+        resolveRulesFirstPaint();
+        return r.json().catch(function () { return null; }).then(function (body) {
+          abortLoader(safeString(body && body.codice) || "chiave_non_valida");
+          return null;
+        });
+      }
+      // [S15] 404 = nessuna regola per il dominio: marca lo stato e
+      // neutralizza il testo del banner (mai categorie inventate).
+      // Distinto dagli errori di rete (catch): li' resta tutto
       // com'e', fail-open.
-      if (r && (r.status === 404 || r.status === 403)) {
+      if (r && r.status === 404) {
         regoleMissing = true;
         writeRegoleMissing(dominio, true);
         warn("CookieWX: nessuna regola per il dominio " + dominio +
@@ -4663,7 +4719,8 @@ var vendor = findVendorByUrl(url);
 
   function anSetEnabled(flag, preFlag) {
     var cfg = (window.CookieWX && window.CookieWX.config) || {};
-    var want = !!(flag || cfg.analyticsForce);
+    // [S42] loader abortito: analytics sempre spenta, anche con force.
+    var want = !CWX_ABORTED && !!(flag || cfg.analyticsForce);
     CWX_AN.pre = !!preFlag || !!cfg.analyticsPreConsent;
     if (!want || !SITE_KEY) {
       if (CWX_AN.on) {
