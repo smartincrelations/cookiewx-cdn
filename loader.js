@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.7.10
+ * CookieWX Loader v4.7.13
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.12"; // [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
+  var VERSION = "4.7.13"; // [S41 2026-10-09] Planet49: preferenze non essenziali SPENTE di default quando non esiste consenso salvato (pannello mai pre-spuntato). [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -147,10 +147,12 @@
     manualIframes: []
   };
 
+  // [S41] default-deny: mai categorie non essenziali pre-attive.
+  // Il valore reale e' sempre impostato da showPreferences() prima dell'uso.
   var CWX_TEMP_PREFS = {
-    funzionali: true,
-    statistici: true,
-    marketing: true
+    funzionali: false,
+    statistici: false,
+    marketing: false
   };
 
   var ORIGINALS = {};
@@ -3717,16 +3719,21 @@ var vendor = findVendorByUrl(url);
       var existing = readConsentFromStorage();
 
       if (existing) {
+        // Consenso salvato: le caselle riflettono la scelta gia' fatta.
         CWX_TEMP_PREFS = {
-          funzionali: existing.funzionali,
-          statistici: existing.statistici,
-          marketing: existing.marketing
+          funzionali: !!existing.funzionali,
+          statistici: !!existing.statistici,
+          marketing: !!existing.marketing
         };
       } else {
+        // [S41 2026-10-09 — Planet49] Nessun consenso salvato: le caselle
+        // NON essenziali partono SPENTE. Un pannello pre-spuntato rende
+        // invalido il consenso (sentenza Planet49 / linee Garante): chi
+        // salva senza toccare nulla deve registrare tutto false.
         CWX_TEMP_PREFS = {
-          funzionali: true,
-          statistici: true,
-          marketing: true
+          funzionali: false,
+          statistici: false,
+          marketing: false
         };
       }
 
