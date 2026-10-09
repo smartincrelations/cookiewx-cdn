@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-10-09 18:45 (conversazione "SCOUT" — S41 Planet49, loader v4.7.13)
+Ultimo aggiornamento: 2026-10-09 20:15 (conversazione "SCOUT" — S42 chiave obbligatoria, loader v4.7.14)
 
 ## Repo
 
@@ -33,6 +33,11 @@ Ultimo aggiornamento: 2026-10-09 18:45 (conversazione "SCOUT" — S41 Planet49, 
 ## Stato
 
 ### Fatto
+- **Loader v4.7.14 (09/10/2026 sera, S42):** senza chiave valida il loader
+  ABORTISCE (getRegole 403 chiave_*): niente banner/badge/blocco/beacon,
+  un solo console.warn, rilascio di quanto già bloccato. Override demo
+  (COOKIEWX_*) intatti. Attenzione alle guardie nei mount() schedulati
+  (race post-abort) se si tocca il boot.
 - **Loader v4.7.13 (09/10/2026, S41 Planet49):** pannello preferenze MAI
   pre-spuntato — senza consenso salvato le categorie non essenziali
   partono SPENTE (prima erano tutte true = consenso invalido). Consenso
