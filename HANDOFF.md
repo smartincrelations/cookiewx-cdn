@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-10-09 20:15 (conversazione "SCOUT" — S42 chiave obbligatoria, loader v4.7.14)
+Ultimo aggiornamento: 2026-10-11 11:45 (conversazione "SCOUT" — S43 vid persistente, loader v4.7.15)
 
 ## Repo
 
@@ -33,6 +33,14 @@ Ultimo aggiornamento: 2026-10-09 20:15 (conversazione "SCOUT" — S42 chiave obb
 ## Stato
 
 ### Fatto
+- **Loader v4.7.15 (11/10/2026, S43):** vid analytics PERSISTENTE post-consenso:
+  `anGetVid()` riusa `getOrCreateUserId()` (localStorage `cookiewxUserId`) al
+  posto del vid di sessione; fallback al vid di sessione se localStorage
+  bloccato; gate `anHasStatsConsent()` invariato (mai pre-consenso). Nuova
+  `anPurgeIdentity()` invocata da `saveConsent()` alla revoca statistici
+  (true→false): distrugge vid persistente + di sessione. NB: `cancellaDati`
+  non esiste — non cercarla. E2E: due sessioni → stesso vid; server:
+  UPDATE last_seen + abituali++ verificato con fixture D1.
 - **Loader v4.7.14 (09/10/2026 sera, S42):** senza chiave valida il loader
   ABORTISCE (getRegole 403 chiave_*): niente banner/badge/blocco/beacon,
   un solo console.warn, rilascio di quanto già bloccato. Override demo
