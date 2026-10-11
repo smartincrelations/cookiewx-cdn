@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.7.14
+ * CookieWX Loader v4.7.15
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.14"; // [S42 2026-10-09] chiave obbligatoria: getRegole 403 (chiave_richiesta/sconosciuta/dominio_non_registrato/suspended/cancelled) → abort totale loader (no banner/badge/blocco/beacon, rilascio bloccati, 1 console.warn). [S41 2026-10-09] Planet49: preferenze non essenziali SPENTE di default quando non esiste consenso salvato (pannello mai pre-spuntato). [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
+  var VERSION = "4.7.15"; // [S43 2026-10-11] vid analytics persistente post-consenso: anGetVid riusa cookiewxUserId (localStorage) invece del vid di sessione; fallback sessione se localStorage bloccato; revoca statistici → purge identificativo (policy 3bis). [S42 2026-10-09] chiave obbligatoria: getRegole 403 (chiave_richiesta/sconosciuta/dominio_non_registrato/suspended/cancelled) → abort totale loader (no banner/badge/blocco/beacon, rilascio bloccati, 1 console.warn). [S41 2026-10-09] Planet49: preferenze non essenziali SPENTE di default quando non esiste consenso salvato (pannello mai pre-spuntato). [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -4014,6 +4014,16 @@ var vendor = findVendorByUrl(url);
 
   function saveConsent(preferenze, tipo) {
     try {
+      // [S43] revoca statistici: se il consenso precedente li aveva e il
+      // nuovo no, cancella l'identificativo anonimo persistente (3bis).
+      var prevConsent = null;
+      try {
+        var prevRaw = readConsentFromStorage();
+        prevConsent = prevRaw && (prevRaw.statistici ||
+          (prevRaw.preferenze && prevRaw.preferenze.statistici));
+      } catch (_) {}
+      if (prevConsent && !preferenze.statistici) anPurgeIdentity();
+
       var payload = {
         accettato: !!(
           preferenze.funzionali ||
@@ -4545,9 +4555,25 @@ var vendor = findVendorByUrl(url);
   }
 
   function anGetVid() {
-    // ID anonimo SOLO post-consenso (Modalita' A). sessionStorage, mai cookie.
+    // ID anonimo SOLO post-consenso (Modalita' A). Il gate resta qui:
+    // MAI un vid prima del consenso statistici.
     if (!anHasStatsConsent()) return "";
     if (CWX_AN.vid) return CWX_AN.vid;
+    // [S43 2026-10-11 — v4.7.15] vid PERSISTENTE post-consenso: riusa
+    // cookiewxUserId (localStorage, lo stesso ID del consenso) cosi' il
+    // server riconosce chi torna ("Chi torna e chi arriva" prima era
+    // sempre 0: il vid di sessione moriva a chiusura tab). Lato server
+    // resta hash sha256+salt (B84). Dichiarato in policy sezione 3bis.
+    try {
+      var p = getOrCreateUserId();
+      // localStorage bloccato (privacy mode): getOrCreateUserId torna un
+      // id temporaneo diverso a ogni chiamata → inutile, si cade sul
+      // vid di sessione (comportamento pre-S43).
+      if (p && p.indexOf("cwx-temp-") !== 0) {
+        CWX_AN.vid = p;
+        return p;
+      }
+    } catch (_) {}
     try {
       var v = sessionStorage.getItem("cookiewxAnVid") || "";
       if (!v) {
@@ -4557,6 +4583,16 @@ var vendor = findVendorByUrl(url);
       CWX_AN.vid = v;
     } catch (_) { CWX_AN.vid = ""; }
     return CWX_AN.vid;
+  }
+
+  // [S43] Revoca del consenso statistico: l'identificativo anonimo
+  // persistente sparisce dal browser (promessa policy 3bis: "cancellabile
+  // in ogni momento revocando il consenso"). Gli eventi smettono comunque
+  // di partire per via del gate anHasStatsConsent().
+  function anPurgeIdentity() {
+    try { localStorage.removeItem(KEYS.USER_ID); } catch (_) {}
+    try { sessionStorage.removeItem("cookiewxAnVid"); } catch (_) {}
+    try { CWX_AN.vid = ""; } catch (_) {}
   }
 
   function anPush(ev) {
