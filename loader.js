@@ -1,5 +1,5 @@
 /* =========================================================
- * CookieWX Loader v4.7.15
+ * CookieWX Loader v4.7.16
  * Runtime Consent Firewall — versione unica completa
  *
  * Obiettivo:
@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.15"; // [S43 2026-10-11] vid analytics persistente post-consenso: anGetVid riusa cookiewxUserId (localStorage) invece del vid di sessione; fallback sessione se localStorage bloccato; revoca statistici → purge identificativo (policy 3bis). [S42 2026-10-09] chiave obbligatoria: getRegole 403 (chiave_richiesta/sconosciuta/dominio_non_registrato/suspended/cancelled) → abort totale loader (no banner/badge/blocco/beacon, rilascio bloccati, 1 console.warn). [S41 2026-10-09] Planet49: preferenze non essenziali SPENTE di default quando non esiste consenso salvato (pannello mai pre-spuntato). [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
+  var VERSION = "4.7.16"; // [S44 2026-10-14] pari evidenza Garante (LG 10/06/2021): con colorePrimario custom anche Rifiuta usa il colore (era solo Accetta); default invariato (entrambi neri). [S43 2026-10-11] vid analytics persistente post-consenso: anGetVid riusa cookiewxUserId (localStorage) invece del vid di sessione; fallback sessione se localStorage bloccato; revoca statistici → purge identificativo (policy 3bis). [S42 2026-10-09] chiave obbligatoria: getRegole 403 (chiave_richiesta/sconosciuta/dominio_non_registrato/suspended/cancelled) → abort totale loader (no banner/badge/blocco/beacon, rilascio bloccati, 1 console.warn). [S41 2026-10-09] Planet49: preferenze non essenziali SPENTE di default quando non esiste consenso salvato (pannello mai pre-spuntato). [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -3155,6 +3155,9 @@ var vendor = findVendorByUrl(url);
     var col = /^#[0-9a-fA-F]{3,8}$/.test(cfg.colorePrimario || "") ? cfg.colorePrimario : null;
     if (col) {
       css += '#cookiewx-banner button[data-cwx="accept"]{background:' + col + ' !important;}';
+      // [S44 2026-10-14] pari evidenza grafica (Garante, LG 10/06/2021):
+      // Rifiuta identico ad Accetta anche con colorePrimario custom.
+      css += '#cookiewx-banner button[data-cwx="reject"]{background:' + col + ' !important;}';
       css += '#cookiewx-banner button[data-cwx="prefs"]{background:' + col + '1A !important;color:' + col + ' !important;}';
       // [S21] anche il link Cookie Policy nel pannello preferenze segue
       // il colore primario della config banner
