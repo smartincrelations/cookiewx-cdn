@@ -8,7 +8,7 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-10-11 11:45 (conversazione "SCOUT" — S43 vid persistente, loader v4.7.15)
+Ultimo aggiornamento: 2026-10-14 18:10 (conversazione "SCOUT" — S44 pari evidenza, loader v4.7.16)
 
 ## Repo
 
@@ -33,6 +33,11 @@ Ultimo aggiornamento: 2026-10-11 11:45 (conversazione "SCOUT" — S43 vid persis
 ## Stato
 
 ### Fatto
+- **Loader v4.7.16 (14/10/2026, S44):** pari evidenza grafica Garante (LG
+  10/06/2021): con `colorePrimario` custom anche `Rifiuta tutto` usa il colore
+  (prima solo Accetta). Default invariato: senza config entrambi nero pieno.
+  Cambio minimo in `applyBannerConfig` (1 regola CSS). E2E: computed style
+  accept/reject identici con custom (rgb(230,90,15)) e default (rgb(0,0,0)).
 - **Loader v4.7.15 (11/10/2026, S43):** vid analytics PERSISTENTE post-consenso:
   `anGetVid()` riusa `getOrCreateUserId()` (localStorage `cookiewxUserId`) al
   posto del vid di sessione; fallback al vid di sessione se localStorage
