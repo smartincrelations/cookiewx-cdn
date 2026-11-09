@@ -8,7 +8,24 @@
 > modificare il loader.** Aggiornalo quando finisci un blocco di lavoro,
 > poi committa e pusha.
 
-Ultimo aggiornamento: 2026-10-14 18:10 (conversazione "SCOUT" — S44 pari evidenza, loader v4.7.16)
+Ultimo aggiornamento: 2026-11-09 23:55 (conversazione "SCOUT" — S48 OSM Funzionali + releaseBlockedPixels, loader v4.7.17)
+
+## 2026-11-09 — SCOUT (S48)
+
+- **loader v4.7.17**: nuova `releaseBlockedPixels()` — i pixel/immagini bloccati
+  pre-consenso (`data-cwx-blocked-pixel`: tile mappe Leaflet/OSM, pixel immagine)
+  vengono rilasciati al consenso della loro categoria, come già script/iframe.
+  Prima restavano bloccati per sempre → mappe rotte anche dopo il consenso
+  Funzionali. Chiamata accanto a releaseBlockedScripts/Iframes (2 sedi).
+- **CSI**: `*.openstreetmap.org` script+iframe → **Funzionali** (fonte
+  manuale-regia). Copre tile a./b./c., Nominatim, embed iframe.
+- E2E su pagina usa-e-getta (poi rimossa): pre-consenso 0 tile + geocoding
+  Nominatim neutralizzato; dopo consenso Funzionali mappa caricata; dopo
+  Rifiuta tutto fermo.
+- Mirror demo `cookiewx-web/public/demo/loader.js` allineato (repo PALCO:
+  solo quella copia, nessun deploy web fatto da me).
+
+Ultimo aggiornamento precedente: 2026-10-14 18:10 (conversazione "SCOUT" — S44 pari evidenza, loader v4.7.16)
 
 ## Repo
 

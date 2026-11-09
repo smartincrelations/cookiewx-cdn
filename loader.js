@@ -36,7 +36,7 @@
    * ========================================================= */
 
   var DEBUG = true;
-  var VERSION = "4.7.16"; // [S44 2026-10-14] pari evidenza Garante (LG 10/06/2021): con colorePrimario custom anche Rifiuta usa il colore (era solo Accetta); default invariato (entrambi neri). [S43 2026-10-11] vid analytics persistente post-consenso: anGetVid riusa cookiewxUserId (localStorage) invece del vid di sessione; fallback sessione se localStorage bloccato; revoca statistici → purge identificativo (policy 3bis). [S42 2026-10-09] chiave obbligatoria: getRegole 403 (chiave_richiesta/sconosciuta/dominio_non_registrato/suspended/cancelled) → abort totale loader (no banner/badge/blocco/beacon, rilascio bloccati, 1 console.warn). [S41 2026-10-09] Planet49: preferenze non essenziali SPENTE di default quando non esiste consenso salvato (pannello mai pre-spuntato). [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
+  var VERSION = "4.7.17"; // [S48 2026-11-09] releaseBlockedPixels: i pixel/immagini bloccati pre-consenso (data-cwx-blocked-pixel — tile mappe OSM/Leaflet, pixel immagine) vengono ora rilasciati al consenso della loro categoria, come gia' script e iframe (prima restavano bloccati per sempre → mappe rotte dopo il consenso Funzionali). [S44 2026-10-14] pari evidenza Garante (LG 10/06/2021): con colorePrimario custom anche Rifiuta usa il colore (era solo Accetta); default invariato (entrambi neri). [S43 2026-10-11] vid analytics persistente post-consenso: anGetVid riusa cookiewxUserId (localStorage) invece del vid di sessione; fallback sessione se localStorage bloccato; revoca statistici → purge identificativo (policy 3bis). [S42 2026-10-09] chiave obbligatoria: getRegole 403 (chiave_richiesta/sconosciuta/dominio_non_registrato/suspended/cancelled) → abort totale loader (no banner/badge/blocco/beacon, rilascio bloccati, 1 console.warn). [S41 2026-10-09] Planet49: preferenze non essenziali SPENTE di default quando non esiste consenso salvato (pannello mai pre-spuntato). [S36 2026-10-06] eventi contatti/moduli nel batch analytics: clic tel:/mailto:/WhatsApp → label "contatto:tel|mailto|whatsapp", submit form → "form:submit" (SOLO conteggio, mai contenuti). [S-token 2026-10-03] B36: t=consentToken nel POST /consent e analytics/collect
 
   var KEYS = {
     CONSENSO: "cookiewxConsenso",
@@ -186,6 +186,7 @@
       releaseManualTaggedElements();
       releaseBlockedScripts();
       releaseBlockedIframes();
+      releaseBlockedPixels();
     } catch (_) {}
   }
 
@@ -2466,6 +2467,35 @@ var vendor = findVendorByUrl(url);
     });
   }
 
+  // [S48 2026-11-09] Rilascio dei pixel/immagini bloccati pre-consenso
+  // (Image.src override + MutationObserver img). Prima restavano bloccati
+  // PER SEMPRE anche dopo il consenso: le mappe Leaflet/OSM (tile = <img>)
+  // restavano rotte dopo l'accettazione dei Funzionali. Ora, come script
+  // e iframe, vengono ripristinati appena la categoria e' consentita.
+  function releaseBlockedPixels() {
+    try {
+      document.querySelectorAll("[data-cwx-blocked-pixel]").forEach(function (el) {
+        try {
+          var url = el.getAttribute("data-cwx-blocked-pixel");
+
+          if (!url) {
+            el.removeAttribute("data-cwx-blocked-pixel");
+            return;
+          }
+
+          if (!canTransmit("pixel", url)) return; // consenso ancora negato: resta bloccato
+
+          el.setAttribute("src", url);
+          el.removeAttribute("data-cwx-blocked-pixel");
+
+          log("CookieWX: pixel rilasciato", url);
+        } catch (_) {}
+      });
+    } catch (e) {
+      warn("CookieWX: releaseBlockedPixels error", e);
+    }
+  }
+
   function enforceIframeTeardown() {
     try {
       document.querySelectorAll("iframe").forEach(function (iframe) {
@@ -4189,6 +4219,7 @@ var vendor = findVendorByUrl(url);
       releaseManualTaggedElements();
       releaseBlockedScripts();
       releaseBlockedIframes();
+      releaseBlockedPixels();
     }, 50);
 
     setTimeout(function () {
